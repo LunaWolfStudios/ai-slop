@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Railbound: Neon Express</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #050510; }
+        canvas { display: block; margin: 0 auto; box-shadow: 0 0 20px rgba(0, 242, 255, 0.2); }
+    </style>
+</head>
+<body>
+<script type="module">
+    import kaboom from "https://unpkg.com/kaboom@3000.0.1/dist/kaboom.mjs";
+
+    kaboom({
+        background: [10, 5, 20],
+        width: 1024,
+        height: 640,
+        scale: 1,
+        font: "monospace"
+    });
+
+    // --- GLOBAL STATE ---
+    const GAME_STATE = {
+        score: 0,
+        level: 0,
+        maxHp: 100,
+        currentHp: 100,
+        swordDmg: 1,
+        laserCooldownMax: 3,
+        laserSpeed: 1200
+    };
+
+    // --- HELPER COMPONENTS ---
+    function lifespan(seconds) {
+        return {
+            id: "lifespan",
+            add() { wait(seconds, () => this.destroy()); }
+        };
+    }
+
+    // --- CONSTANTS ---
+    const JUMP_FORCE = 750;
+    const SPEED = 320;
+    const GRAVITY = 2200;
+    setGravity(GRAVITY);
+
+    // --- MAPS ---
+    const MAPS = [
+        [
+            "====================",
+            "=                  =",
+            "=                  =",
+            "=                  =",
+            "=          R       =",
+            "= P      ====    D =",
+            "=                  =",
+            "====================",
+        ],
+        [
+            "====================",
+            "=    R             =",
+            "=   ===      ===   =",
+            "=                  =",
+            "= R      P       R =",
+            "= ===   ===     == =",
+            "=                D =",
+            "====================",
+        ],
+        [
+            "====================",
+            "=                  =",
+            "= P      _      _ D=",
+            "====           _   =",
+            "=           _      =",
+            "=                  =",
+            "=     R   R   R    =",
+            "====================",
+        ],
+        [
+            "====================",
+            "=                 D=",
+            "=   _   _   _   _  =",
+            "=   R   R   P   R  =",
+            "=  === === === === =",
+            "=                  =",
+            "= R              R =",
+            "====================",
+        ],
+        [
+            "====================",
+            "=                  =",
+            "=       R  D   R   =",
+            "=      ===    ===  =",
+            "=  P   ===    ===  =",
+            "= ===  ===    ===  =",
+            "=                  =",
+            "====================",
+        ],
+        [
+            "====================",
+            "=R  R  R  R  R  R D=",
+            "=                  =",
+            "= _  _  _  _  _  _ =",
+            "=                  =",
+            "= P   _      _     =",
+            "=                  =",
+            "====================",
+        ],
+        [
+            "====================",
+            "=R                R=",
+            "====   _    _   ====",
+            "=                  =",
+            "=   _    P     _  D=",
+            "=        _         =",
+            "= R              R =",
+            "====================",
+        ],
+        [
+            "====================",
+            "=                 D=",
+            "= _     R  R     _ =",
+            "=    _        _    =",
+            "=       ====       =",
+            "= P     ====     R =",
+            "=       ====       =",
+            "====================",
+        ],
+        [
+            "====================",
+            "=                 D=",
+            "= R              R =",
+            "=      _    _      =",
+            "=      R    R      =",
+            "= P             _  =",
+            "=                  =",
+            "====================",
+        ],
+        [
+            "====================",
+            "= R      R       R =",
+            "=                  =",
+            "=   R    P     R  D=",
+            "=      =====       =",
+            "=  _R         R _  =",
+            "=                  =",
+            "====================",
+        ],
+    ];
+
+    // --- SCENE: MENU ---
+    scene("menu", () => {
+        add([ rect(width(), height()), color(10, 5, 20) ]);
+        loop(0.5, () => {
+            add([ rect(width(), 2), pos(0, height()), anchor("botleft"), color(200, 0, 255), opacity(0.5), move(UP, 100), lifespan(3), z(0) ]);
+        });
+        add([ text("RAILBOUND", { size: 80 }), pos(center().x, 200), anchor("center"), color(0, 242, 255) ]);
+        add([ text("NEON EXPRESS", { size: 40 }), pos(center().x, 260), anchor("center"), color(255, 0, 128) ]);
+        add([ text("Press [ ENTER ] to Board", { size: 24 }), pos(center().x, 400), anchor("center"), color(255, 255, 255) ]);
+
+        onKeyPress("enter", () => {
+            GAME_STATE.score = 0;
+            GAME_STATE.level = 0;
+            GAME_STATE.currentHp = GAME_STATE.maxHp;
+            go("game");
+        });
+    });
+
+    // --- SCENE: GAME ---
+    scene("game", () => {
+        
+        let activeEnemyCount = 0;
+
+        // Background
+        loop(0.2, () => {
+            add([ rect(100, height()), pos(width(), 0), move(LEFT, 1500), color(255, 255, 255), opacity(0.05), lifespan(1), z(-10) ]);
+        });
+        add([ rect(width(), 64), pos(0,0), color(20, 20, 30), z(10) ]); // Ceiling
+        add([ rect(width(), 64), pos(0, height()-64), color(20, 20, 30), z(10) ]); // Floor
+        
+        // --- MAP LOADER ---
+        const mapLayout = MAPS[GAME_STATE.level % MAPS.length];
+        
+        const level = addLevel(mapLayout, {
+            tileWidth: 64,
+            tileHeight: 64,
+            pos: vec2(64, 64),
+            tiles: {
+                "=": () => [
+                    rect(64, 64),
+                    color(30, 30, 50),
+                    outline(2, rgb(0, 255, 255)),
+                    area(),
+                    body({ isStatic: true }),
+                    "wall"
+                ],
+                "_": () => [
+                    rect(64, 16),
+                    color(100, 100, 150),
+                    area(),
+                    body({ isStatic: true }),
+                    "platform"
+                ],
+                "D": () => [
+                    rect(48, 80),
+                    color(80, 20, 20), // LOCKED RED
+                    outline(4, rgb(255, 0, 0)),
+                    area(),
+                    body({ isStatic: true }),
+                    anchor("bot"),
+                    "door",
+                    { 
+                        isOpen: false 
+                    }
+                ],
+                "R": () => {
+                    activeEnemyCount++; // Reliable count increment
+                    return [
+                        rect(48, 48),
+                        color(50, 255, 50),
+                        outline(2, rgb(20, 100, 20)),
+                        area(),
+                        body(),
+                        anchor("center"),
+                        health(3 + Math.floor(GAME_STATE.level / 2)),
+                        state("idle", ["idle", "chase"]),
+                        "enemy",
+                        { dir: -1 }
+                    ];
+                },
+            }
+        });
+
+        // --- UI ELEMENTS ---
+        const uiBase = add([ pos(0, 0), fixed(), z(100) ]);
+        
+        const enemyText = uiBase.add([ 
+            text(`ENEMIES: ${activeEnemyCount}`, { size: 24, color: rgb(255, 50, 50) }), 
+            pos(width() - 150, 30), 
+            anchor("center") 
+        ]);
+
+        const scoreText = uiBase.add([ text(`PTS: ${GAME_STATE.score}`, { size: 24 }), pos(width()/2, 30), anchor("center") ]);
+        const dial = uiBase.add([ circle(50), pos(60, 60), color(0,0,0), outline(3, rgb(255,255,255)) ]);
+        const needle = uiBase.add([ rect(40, 4), pos(60, 60), color(255,0,0), anchor("left"), rotate(0) ]);
+        uiBase.add([ text("HP", {size:16}), pos(60, 90), anchor("center") ]);
+        const laserBar = uiBase.add([ rect(200, 10), pos(width()/2, 90), anchor("center"), color(50,50,50), outline(2, rgb(255,255,255)) ]);
+        const laserFill = laserBar.add([ rect(0, 10), anchor("left"), pos(-100, -5), color(0, 255, 255) ]);
+
+        // Add a lock label helper
+        const lockLabel = add([
+            text("LOCKED", { size: 18, color: rgb(255, 0, 0) }),
+            pos(0, 0), // Will update in loop
+            opacity(0) // Hidden until we find the door
+        ]);
+
+        // --- PLAYER SPAWN ---
+        let startPos = vec2(200, 300);
+        mapLayout.forEach((row, y) => {
+            const x = row.indexOf("P");
+            if (x >= 0) startPos = vec2(x * 64 + 96, y * 64 + 96);
+        });
+
+        const player = add([
+            rect(32, 54),
+            color(0, 242, 255),
+            pos(startPos),
+            area(),
+            body(),
+            anchor("center"),
+            health(GAME_STATE.currentHp),
+            "player",
+            { facing: 1, laserTimer: 0, jumps: 0 }
+        ]);
+
+        player.add([ rect(34, 6), color(255, 0, 80), pos(0, -20), anchor("center") ]);
+        const eyes = player.add([ rect(24, 8), color(0,0,0), pos(6, -10), anchor("center") ]);
+
+        // --- GAME LOGIC ---
+
+        // Check if level is clear
+        function checkWin() {
+            // Update Text
+            if (activeEnemyCount > 0) {
+                enemyText.text = `ENEMIES: ${activeEnemyCount}`;
+                enemyText.color = rgb(255, 50, 50);
+            } else {
+                enemyText.text = "CAR CLEAR!";
+                enemyText.color = rgb(50, 255, 50);
+
+                // --- DOOR UNLOCKING ---
+                // We use get("door") here to ensure we find the object currently in scene
+                level.get("door").forEach((d) => {
+                    if (!d.isOpen) {
+                        d.isOpen = true;
+                        d.color = rgb(0, 255, 0); // Green
+                    }
+                });
+
+                // Update Lock Label
+                lockLabel.text = "UNLOCKED";
+                lockLabel.color = rgb(0, 255, 0);
+            }
+        }
+
+        // Initial check
+        checkWin();
+
+        onUpdate(() => {
+            scoreText.text = `PTS: ${GAME_STATE.score}`;
+            const hpPct = player.hp() / GAME_STATE.maxHp;
+            needle.angle = 135 + (hpPct * 270);
+            
+            if (player.laserTimer > 0) player.laserTimer -= dt();
+            const laserPct = 1 - (Math.max(0, player.laserTimer) / GAME_STATE.laserCooldownMax);
+            laserFill.width = 200 * laserPct;
+            
+            eyes.pos.x = player.facing * 6;
+            camPos(player.pos.x + 200, 320);
+
+            // Update Lock Label Position
+            const doors = level.get("door");
+			console.log("Number of doors:", doors.length);
+            if (doors.length > 0) {
+                lockLabel.opacity = 1;
+                lockLabel.pos = doors[0].pos.sub(0, 100);
+            }
+        });
+
+        // Controls
+        onKeyDown("left", () => { player.move(-SPEED, 0); player.facing = -1; });
+        onKeyDown("right", () => { player.move(SPEED, 0); player.facing = 1; });
+        onKeyPress("space", () => {
+            if (player.isGrounded()) { player.jump(JUMP_FORCE); player.jumps = 1; }
+            else if (player.jumps < 2) { player.jump(JUMP_FORCE * 0.8); player.jumps = 2; }
+        });
+
+        // Attack Z (Sword)
+        onKeyPress("z", () => {
+            add([ rect(80, 80), pos(player.pos.add(player.facing * 40, 0)), anchor("center"), opacity(0), area(), lifespan(0.1), "sword" ]);
+            add([ text(")", { size: 60 }), pos(player.pos.add(player.facing * 40, -10)), anchor("center"), color(0, 242, 255), lifespan(0.15), rotate(player.facing === 1 ? 0 : 180) ]);
+        });
+
+        // Attack X (Laser)
+        onKeyPress("x", () => {
+            if (player.laserTimer > 0) return;
+            player.laserTimer = GAME_STATE.laserCooldownMax;
+            add([ rect(60, 10), pos(player.pos.x, player.pos.y), anchor("left"), color(255, 0, 80), area(), move(player.facing === 1 ? RIGHT : LEFT, GAME_STATE.laserSpeed), lifespan(0.6), "laser", { damage: 3 } ]);
+            shake(5);
+        });
+
+        // --- COLLISIONS ---
+        onCollide("sword", "enemy", (s, e) => { damageEnemy(e, GAME_STATE.swordDmg); e.move(player.facing * 600, -200); });
+        
+        onCollide("laser", "enemy", (l, e) => {
+            if (!l.hitList) l.hitList = [];
+            if (l.hitList.includes(e.id)) return;
+            l.hitList.push(e.id);
+            damageEnemy(e, l.damage);
+        });
+
+        function damageEnemy(e, dmg) {
+            e.hurt(dmg);
+            e.color = rgb(255, 255, 255);
+            wait(0.1, () => e.color = rgb(50, 255, 50));
+            add([ text(`-${dmg}`, { size: 20, color: rgb(255, 200, 0) }), pos(e.pos.add(0, -30)), move(UP, 100), lifespan(0.5) ]);
+        }
+
+        // --- ENEMY DEATH ---
+        on("death", "enemy", (e) => {
+            destroy(e);
+            GAME_STATE.score += 100;
+            
+            activeEnemyCount--;
+            checkWin(); // Trigger unlock logic
+        });
+
+        player.onCollide("enemy", (e) => {
+            player.hurt(10);
+            GAME_STATE.currentHp = player.hp();
+            shake(10);
+            const dir = player.pos.x < e.pos.x ? -1 : 1;
+            player.move(dir * 1000, -300);
+        });
+
+        // Door Interaction
+        player.onCollide("door", (d) => {
+            if (d.isOpen) {
+                go("merchant");
+            } else {
+                shake(2);
+                add([
+                    text("LOCKED!", { size: 24, align: "center" }),
+                    pos(width()/2, height()/2 - 50),
+                    anchor("center"),
+                    color(255, 0, 0),
+                    lifespan(1),
+                    fixed()
+                ]);
+            }
+        });
+
+        // Enemy AI
+        onUpdate("enemy", (e) => {
+            if (e.pos.dist(player.pos) < 600) {
+                const dir = player.pos.x > e.pos.x ? 1 : -1;
+                e.move(dir * 100, 0);
+            }
+        });
+
+        player.on("death", () => go("lose"));
+    });
+
+    // --- SCENE: MERCHANT ---
+    scene("merchant", () => {
+        add([ rect(width(), height()), color(20, 15, 25) ]);
+        add([ text("MERCHANT CAR", { size: 48 }), pos(center().x, 80), anchor("center"), color(255, 215, 0) ]);
+        add([ text(`POINTS: ${GAME_STATE.score}`, { size: 32 }), pos(center().x, 140), anchor("center"), color(0, 255, 0) ]);
+
+        function createCard(txt, cost, effect, xPos) {
+            const btn = add([ rect(250, 300), pos(xPos, center().y + 50), anchor("center"), color(40, 40, 60), outline(4, rgb(255, 255, 255)), area(), "btn" ]);
+            btn.add([ text(txt, { size: 24, align: "center", width: 220 }), pos(0, -50), anchor("center") ]);
+            btn.add([ text(`COST: ${cost}`, { size: 20, color: rgb(255, 215, 0) }), pos(0, 50), anchor("center") ]);
+            btn.onClick(() => {
+                if (GAME_STATE.score >= cost) {
+                    GAME_STATE.score -= cost;
+                    effect();
+                    shake(5);
+                    go("game");
+                } else {
+                    shake(2);
+                    btn.color = rgb(255, 0, 0);
+                    wait(0.2, () => btn.color = rgb(40, 40, 60));
+                }
+            });
+            btn.onHover(() => { btn.color = rgb(60, 60, 80); btn.scale = vec2(1.05); });
+            btn.onHoverEnd(() => { btn.color = rgb(40, 40, 60); btn.scale = vec2(1); });
+        }
+
+        createCard("REPAIR SUIT\n(+50 HP)", 200, () => { GAME_STATE.currentHp = Math.min(GAME_STATE.currentHp + 50, GAME_STATE.maxHp); GAME_STATE.level++; }, center().x - 300);
+        createCard("SHARPEN BLADE\n(+1 DMG)", 400, () => { GAME_STATE.swordDmg++; GAME_STATE.level++; }, center().x);
+        createCard("OVERCLOCK\n(-0.5s CD)", 300, () => { GAME_STATE.laserCooldownMax = Math.max(0.5, GAME_STATE.laserCooldownMax - 0.5); GAME_STATE.level++; }, center().x + 300);
+
+        add([ text("[ ENTER ] Leave without buying", { size: 18 }), pos(center().x, height() - 50), anchor("center") ]);
+        onKeyPress("enter", () => { GAME_STATE.level++; go("game"); });
+    });
+
+    scene("lose", () => {
+        add([ rect(width(), height()), color(0, 0, 0) ]);
+        add([ text("MISSION FAILED", { size: 60, color: rgb(255, 0, 0) }), pos(center().x, center().y - 50), anchor("center") ]);
+        add([ text(`FINAL SCORE: ${GAME_STATE.score}`, { size: 30 }), pos(center().x, center().y + 50), anchor("center") ]);
+        add([ text("Press SPACE to Restart", { size: 20 }), pos(center().x, height() - 100), anchor("center") ]);
+        onKeyPress("space", () => go("menu"));
+    });
+
+    go("menu");
+
+</script>
+</body>
+</html>
