@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ASTS: Galactic Connectivity</title>
+    <style>
+        :root {
+            --space-bg: #05070a;
+            --earth-main: #2b65ec;
+            --land-green: #4ade80;
+            --atmo-glow: #00d4ff;
+            --gold: #ffd700;
+            --panel: rgba(20, 25, 35, 0.95);
+        }
+
+        /* Prevent scrolling/bouncing on mobile */
+        body, html { 
+            margin: 0; padding: 0; height: 100%; width: 100%; 
+            font-family: 'Segoe UI', sans-serif; background: var(--space-bg); 
+            color: white; overflow: hidden; display: flex; 
+            flex-direction: row; /* Desktop Default */
+        }
+
+        /* --- LAYOUT RESPONSIVENESS --- */
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            #sidebar { width: 100% !important; height: 50% !important; border-left: none !important; border-top: 3px solid #111; }
+            #game-view { height: 50%; flex: none; }
+            #earth-wrapper { transform: scale(0.8); } /* Shrink earth slightly for small screens */
+            .currency-bar { padding: 10px 20px !important; width: 80%; }
+            .stat-item .value { font-size: 1.4rem !important; }
+        }
+
+        #game-view { 
+            flex: 1; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; 
+            background: radial-gradient(circle at center, #0f172a 0%, #05070a 100%); 
+        }
+        
+        #starfield { position: absolute; width: 100%; height: 100%; pointer-events: none; }
+
+        #earth-wrapper {
+            position: relative; width: 260px; height: 260px;
+            display: flex; align-items: center; justify-content: center;
+            z-index: 5;
+        }
+
+        #earth-container { 
+            position: relative; width: 260px; height: 260px; cursor: pointer;
+            transition: transform 0.05s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            user-select: none; z-index: 10;
+            -webkit-tap-highlight-color: transparent;
+        }
+        #earth-container:active { transform: scale(1.1); }
+
+        .earth-cartoon {
+            width: 100%; height: 100%;
+            background: var(--earth-main); border-radius: 50%;
+            border: 8px solid #1e40af;
+            box-shadow: 0 0 60px rgba(0, 212, 255, 0.3), inset -20px -20px 0px rgba(0,0,0,0.2);
+            position: relative; overflow: hidden; pointer-events: none;
+        }
+
+        .land { position: absolute; background: var(--land-green); border-radius: 20px; }
+        .l1 { width: 100px; height: 60px; top: 40px; left: -20px; transform: rotate(10deg); }
+        .l2 { width: 80px; height: 120px; top: 100px; right: 20px; transform: rotate(-15deg); }
+        .l3 { width: 60px; height: 40px; bottom: 30px; left: 40px; }
+
+        /* --- SATELLITES --- */
+        .sat-orbit-path { position: absolute; top: 50%; left: 50%; width: 0; height: 0; pointer-events: none; }
+        .sat { position: absolute; left: var(--dist); top: 50%; transform: translateY(-50%); }
+        @keyframes orbit-rotation { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        /* --- UI COMPONENTS --- */
+        .currency-bar {
+            position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
+            display: flex; flex-direction: column; align-items: center;
+            background: var(--panel); padding: 15px 40px; border-radius: 20px; 
+            border: 2px solid rgba(255,255,255,0.1); z-index: 100; pointer-events: none;
+            backdrop-filter: blur(5px);
+        }
+        .stats-row { display: flex; gap: 25px; margin-bottom: 5px; }
+        .stat-item { text-align: center; }
+        .stat-item .label { font-size: 0.6rem; text-transform: uppercase; color: #888; }
+        .stat-item .value { font-size: 1.6rem; font-weight: 900; color: #fff; }
+        #cps-display { font-size: 0.8rem; color: #4ade80; font-weight: bold; }
+        .res-progress-container { width: 100%; height: 6px; background: #000; border-radius: 3px; overflow: hidden; margin-top: 5px; }
+        #res-progress-fill { width: 0%; height: 100%; background: var(--gold); }
+
+        .click-pop {
+            position: fixed; pointer-events: none; color: #fff; font-weight: 900; font-size: 2rem;
+            text-shadow: 0 0 10px #00d4ff, 2px 2px 0 #000; z-index: 1000;
+            animation: popUp 0.6s ease-out forwards;
+        }
+        @keyframes popUp {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 1; }
+            100% { transform: translate(-50%, -150%) scale(1.5); opacity: 0; }
+        }
+
+        /* --- SIDEBAR & CARDS --- */
+        #sidebar { width: 380px; background: var(--panel); border-left: 3px solid #111; display: flex; flex-direction: column; z-index: 100; }
+        .tabs { display: flex; background: #000; flex-shrink: 0; }
+        .tab { flex: 1; padding: 15px; text-align: center; cursor: pointer; opacity: 0.5; font-weight: bold; font-size: 0.9rem; }
+        .tab.active { opacity: 1; border-bottom: 4px solid var(--atmo-glow); background: #111; }
+        .content-area { flex: 1; overflow-y: auto; padding: 15px; -webkit-overflow-scrolling: touch; }
+        .hidden { display: none; }
+
+        .card { 
+            background: rgba(255,255,255,0.05); padding: 12px; border-radius: 12px; 
+            border: 1px solid rgba(255,255,255,0.1); margin-bottom: 10px; cursor: pointer;
+            transition: background 0.2s, border-color 0.2s, transform 0.1s;
+        }
+        .card:hover:not(.locked) { background: rgba(255,255,255,0.1); border-color: var(--atmo-glow); }
+        .card:active:not(.locked) { transform: scale(0.97); }
+        .card.locked { opacity: 0.3; cursor: not-allowed; border-color: transparent !important; }
+
+        .sat-bw3 { width: 10px; height: 10px; background: #fff; transform: rotate(45deg); }
+        .sat-bb { width: 20px; height: 5px; background: #00d4ff; border-radius: 1px; }
+        .sat-meme { width: 20px; height: 20px; background: var(--gold); border-radius: 50%; border: 1px solid #fff; }
+
+    </style>
+</head>
+<body>
+
+<div id="game-view">
+    <canvas id="starfield"></canvas>
+    
+    <div class="currency-bar">
+        <div class="stats-row">
+            <div class="stat-item">
+                <div class="label">Data Credits</div>
+                <div id="data-val" class="value">0</div>
+                <div id="cps-display">0 / sec</div>
+            </div>
+            <div class="stat-item">
+                <div class="label">Research</div>
+                <div id="res-val" class="value" style="color:var(--gold)">0</div>
+                <div class="res-progress-container"><div id="res-progress-fill"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="earth-wrapper">
+        <div id="earth-container" onclick="clickEarth(event)">
+            <div class="earth-cartoon">
+                <div class="land l1"></div><div class="land l2"></div><div class="land l3"></div>
+            </div>
+        </div>
+        <div id="satellite-orbits"></div>
+    </div>
+</div>
+
+<div id="sidebar">
+    <div class="tabs">
+        <div class="tab active" data-tab="fleet">FLEET</div>
+        <div class="tab" data-tab="mastery">MASTERY</div>
+    </div>
+    <div id="fleet" class="content-area"></div>
+    <div id="mastery" class="content-area hidden"></div>
+</div>
+
+<script>
+    let state = {
+        credits: 0, research: 0, totalSatellites: 0, satsToNextResearch: 5,
+        clickPower: 1, multiplier: 1,
+        fleet: {
+            bw3: { count: 0, cost: 15, income: 1, name: "BlueWalker 3", class: "sat-bw3" },
+            bb1: { count: 0, cost: 150, income: 10, name: "BlueBird Block 1", class: "sat-bb" },
+            bb2: { count: 0, cost: 1200, income: 60, name: "BlueBird Block 2", class: "sat-bb" },
+            dyson: { count: 0, cost: 10000, income: 400, name: "Memespace Array", class: "sat-meme" }
+        },
+        mastery: [
+            { id: 'm1', name: 'Asic Integration', cost: 3, desc: 'Permanent 2x Click Power', purchased: false, effect: () => { state.clickPower *= 2 } },
+            { id: 'm2', name: 'Solar Efficiency', cost: 8, desc: 'Satellites produce 50% more data', purchased: false, effect: () => { state.multiplier *= 1.5 } },
+            { id: 'm3', name: 'Folding Array Tech', cost: 15, desc: 'Reduces Satellite costs by 20%', purchased: false, effect: () => { Object.values(state.fleet).forEach(f => f.cost *= 0.8); }}
+        ]
+    };
+
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.content-area').forEach(e => e.classList.add('hidden'));
+            document.querySelectorAll('.tab').forEach(e => e.classList.remove('active'));
+            document.getElementById(tab.dataset.tab).classList.remove('hidden');
+            tab.classList.add('active');
+        });
+    });
+
+    function createFleetCards() {
+        const container = document.getElementById('fleet');
+        container.innerHTML = '';
+        Object.keys(state.fleet).forEach(key => {
+            const item = state.fleet[key];
+            const div = document.createElement('div');
+            div.id = `card-${key}`; div.className = 'card locked';
+            div.onclick = () => buySatellite(key);
+            div.innerHTML = `<h4 id="name-${key}">${item.name}</h4><p id="out-${key}">Output: 0 DC/s</p><div style="color:var(--gold); font-weight:bold; margin-top:5px;" id="cost-${key}">Cost: ${item.cost}</div>`;
+            container.appendChild(div);
+        });
+    }
+
+    function createMasteryCards() {
+        const container = document.getElementById('mastery');
+        container.innerHTML = '';
+        state.mastery.forEach((m, i) => {
+            const div = document.createElement('div');
+            div.id = `mastery-${i}`; div.className = 'card locked';
+            div.onclick = () => { if (!m.purchased && state.research >= m.cost) { state.research -= m.cost; m.purchased = true; m.effect(); updateUI(); } };
+            div.innerHTML = `<h4>${m.name}</h4><p>${m.desc}</p><div style="color:var(--gold)">Cost: ${m.cost} RP</div>`;
+            container.appendChild(div);
+        });
+    }
+
+    function buySatellite(key) {
+        const s = state.fleet[key];
+        if (state.credits >= s.cost) {
+            state.credits -= s.cost; s.count++; s.cost *= 1.25; state.totalSatellites++;
+            spawnSatVisual(s.class);
+            if (state.totalSatellites % state.satsToNextResearch === 0) state.research++;
+            updateUI();
+        }
+    }
+
+    function spawnSatVisual(className) {
+        const orbit = document.createElement('div');
+        orbit.className = 'sat-orbit-path';
+        const dist = 140 + Math.random() * 80;
+        const speed = 10 + Math.random() * 20;
+        orbit.style.animation = `orbit-rotation ${speed}s linear infinite`;
+        const sat = document.createElement('div');
+        sat.className = `sat ${className}`;
+        sat.style.setProperty('--dist', `${dist}px`);
+        orbit.appendChild(sat);
+        document.getElementById('satellite-orbits').appendChild(orbit);
+    }
+
+    function clickEarth(e) {
+        state.credits += state.clickPower;
+        const p = document.createElement('div');
+        p.className = 'click-pop';
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        p.style.left = clientX + 'px'; p.style.top = clientY + 'px';
+        p.innerText = `+${state.clickPower}`;
+        document.body.appendChild(p);
+        setTimeout(() => p.remove(), 600);
+        updateUI();
+    }
+
+    function updateUI() {
+        document.getElementById('data-val').innerText = Math.floor(state.credits).toLocaleString();
+        document.getElementById('res-val').innerText = state.research;
+        let totalIncome = 0;
+        Object.keys(state.fleet).forEach(key => {
+            const s = state.fleet[key];
+            const income = s.count * s.income * state.multiplier;
+            totalIncome += income;
+            const card = document.getElementById(`card-${key}`);
+            card.className = `card ${state.credits < s.cost ? 'locked' : ''}`;
+            document.getElementById(`name-${key}`).innerHTML = `${s.name} <span style="float:right">#${s.count}</span>`;
+            document.getElementById(`out-${key}`).innerText = `Output: ${income.toFixed(1)} DC/s`;
+            document.getElementById(`cost-${key}`).innerText = `Cost: ${Math.floor(s.cost)} DC`;
+        });
+        document.getElementById('cps-display').innerText = `${totalIncome.toFixed(1)} / sec`;
+        const prog = (state.totalSatellites % state.satsToNextResearch) / state.satsToNextResearch * 100;
+        document.getElementById('res-progress-fill').style.width = `${prog}%`;
+        state.mastery.forEach((m, i) => {
+            const div = document.getElementById(`mastery-${i}`);
+            div.className = `card ${(state.research < m.cost || m.purchased) ? 'locked' : ''}`;
+            if(m.purchased) div.innerHTML = `<h4>${m.name} ✔️</h4><p>${m.desc}</p><div style="color:var(--gold)">BOUGHT</div>`;
+        });
+    }
+
+    function initStars() {
+        const canvas = document.getElementById('starfield');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+        for(let i=0; i<100; i++) {
+            ctx.fillStyle = "rgba(255,255,255," + Math.random() + ")";
+            ctx.beginPath(); ctx.arc(Math.random()*canvas.width, Math.random()*canvas.height, Math.random()*1.5, 0, Math.PI*2); ctx.fill();
+        }
+    }
+
+    setInterval(() => {
+        let income = 0;
+        Object.values(state.fleet).forEach(s => income += s.count * s.income * state.multiplier);
+        state.credits += income / 10;
+        updateUI();
+    }, 100);
+
+    createFleetCards();
+    createMasteryCards();
+    initStars();
+    updateUI();
+</script>
+</body>
+</html>
