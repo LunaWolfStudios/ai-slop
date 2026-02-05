@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gnome Bowl: Garden Strike</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700;900&display=swap');
+      body {
+        font-family: 'Fredoka', sans-serif;
+      }
+      .perspective-container {
+        perspective: 1200px; /* Deeper perspective */
+        overflow: visible;
+      }
+      .lane-transform {
+        /* The lane is tilted back */
+        transform-style: preserve-3d;
+        transform: rotateX(50deg) translateY(-50px); 
+      }
+      /* Billboard utility: Counter-rotates element to face camera */
+      .billboard {
+        transform-style: preserve-3d;
+      }
+      /* Custom Animations */
+      @keyframes float {
+        0%, 100% { transform: translateY(0px) rotate(0deg); }
+        50% { transform: translateY(-10px) rotate(2deg); }
+      }
+      .animate-float {
+        animation: float 4s ease-in-out infinite;
+      }
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+      /* 3D shapes via CSS gradients */
+      .shading-gradient {
+        background: linear-gradient(90deg, rgba(0,0,0,0.1) 0%, rgba(255,255,255,0.2) 50%, rgba(0,0,0,0.1) 100%);
+      }
+      /* Reflection on the lane */
+      .lane-reflection {
+        background: linear-gradient(180deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 40%);
+      }
+
+    </style>
+
+<link rel="stylesheet" href="./index.css">
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "react": "https://esm.sh/react@^19.2.4",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "@google/genai": "https://esm.sh/@google/genai@^1.40.0",
+    "lucide-react": "https://esm.sh/lucide-react@^0.563.0"
+  }
+}
+</script>
+  <script type="module" crossorigin src="/assets/index-DH-FVorW.js"></script>
+</head>
+  <body class="bg-slate-900 min-h-screen overflow-hidden selection:bg-pink-500 selection:text-white">
+    <div id="root"></div>
+</body>
+</html>
