@@ -70,75 +70,166 @@ const isValid = (p: Coordinates, rows: number, cols: number): boolean => {
   return p.r >= 0 && p.r < rows && p.c >= 0 && p.c < cols;
 };
 
-// --- AI Logic (Simple Greedy) ---
+// --- AI Logic (Advanced) ---
 
 export const getAIMove = (grid: Grid, player: Player, availableMoves: typeof import('../constants').MOVES): { moveId: string, actions: { type: ActionType, target: any }[] } => {
-  // 1. Check if AI can win immediately (Placement)
   const rows = grid.length;
   const cols = grid[0].length;
-
-  // Simple heuristic: Try to find a spot that creates a win
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      if (grid[r][c].type === PieceType.EMPTY) {
-        // Simulate placing token
-        const tempGrid = JSON.parse(JSON.stringify(grid));
-        tempGrid[r][c].type = player;
-        if (checkWin(tempGrid).winner === player) {
-           return {
-             moveId: 'basic-token',
-             actions: [{ type: ActionType.PLACE_TOKEN, target: { r, c } }]
-           };
-        }
-      }
-    }
-  }
-
-  // 2. Block opponent win (Placement)
   const opponent = player === 'X' ? 'O' : 'X';
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      if (grid[r][c].type === PieceType.EMPTY) {
-        const tempGrid = JSON.parse(JSON.stringify(grid));
-        tempGrid[r][c].type = opponent;
-        if (checkWin(tempGrid).winner === opponent) {
-           // Priority block with token or triangle
-           return {
-             moveId: 'block-triangle',
-             actions: [
-               { type: ActionType.PLACE_TRIANGLE, target: { r, c } },
-               { type: ActionType.PLACE_TRIANGLE, target: null } // Waste second triangle or place random
-             ]
-           };
-        }
-      }
-    }
-  }
 
-  // 3. Random Valid Move
-  // Prioritize Token > Triangle > Expand
-  
-  // Try to place token near existing pieces
   const emptyCells: Coordinates[] = [];
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      if (grid[r][c].type === PieceType.EMPTY) {
-        emptyCells.push({ r, c });
+  for(let r=0; r<rows; r++){
+      for(let c=0; c<cols; c++){
+          if(grid[r][c].type === PieceType.EMPTY) emptyCells.push({r,c});
       }
-    }
   }
 
-  if (emptyCells.length > 0) {
-    const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
-    return {
-      moveId: 'basic-token',
-      actions: [{ type: ActionType.PLACE_TOKEN, target: randomCell }]
-    };
+  // 0. Fallback: If board is completely full, we MUST expand.
+  if (emptyCells.length === 0) {
+      return {
+          moveId: 'expand',
+          actions: [{ type: ActionType.DRAW_LINE, target: { index: Math.floor(rows/2), isRow: true } }]
+      };
   }
 
-  // Fallback: Expand board if no empty cells (unlikely with infinite logic, but safe fallback)
+  // Helper: Check if placing a piece at (r,c) results in a win for 'who'
+  const simulatesWin = (r: number, c: number, who: Player): boolean => {
+      const cell = grid[r][c];
+      if (cell.type !== PieceType.EMPTY) return false;
+      const originalType = cell.type;
+      cell.type = who === 'X' ? PieceType.X : PieceType.O; // Direct mutation for check
+      const result = checkWin(grid).winner === who;
+      cell.type = originalType; // Revert
+      return result;
+  };
+
+  // 1. PRIORITY: Immediate Win (Self)
+  for (const {r, c} of emptyCells) {
+      if (simulatesWin(r, c, player)) {
+          return {
+              moveId: 'basic-token',
+              actions: [{ type: ActionType.PLACE_TOKEN, target: { r, c } }]
+          };
+      }
+  }
+
+  // 2. Identify Threats (Opponent wins next turn)
+  const threats: Coordinates[] = [];
+  for (const {r, c} of emptyCells) {
+      if (simulatesWin(r, c, opponent)) {
+          threats.push({r, c});
+      }
+  }
+
+  // Helper: Heuristic Score for Offense/Strategy
+  const getScore = (r: number, c: number) => {
+      let score = Math.random() * 5; // Little noise to vary games
+      
+      // Center bias
+      const centerR = rows / 2;
+      const centerC = cols / 2;
+      score -= (Math.abs(r - centerR) + Math.abs(c - centerC)); 
+
+      for (const [dr, dc] of DIRECTIONS) {
+          // Check Self (Offense Potential)
+          let myCount = 0;
+          let emptyCount = 0;
+          if (isValid({r: r+dr, c: c+dc}, rows, cols)) {
+              if (grid[r+dr][c+dc].type === (player === 'X' ? PieceType.X : PieceType.O)) myCount++;
+              else if (grid[r+dr][c+dc].type === PieceType.EMPTY) emptyCount++;
+          }
+          if (isValid({r: r-dr, c: c-dc}, rows, cols)) {
+              if (grid[r-dr][c-dc].type === (player === 'X' ? PieceType.X : PieceType.O)) myCount++;
+              else if (grid[r-dr][c-dc].type === PieceType.EMPTY) emptyCount++;
+          }
+          
+          if (myCount >= 1) score += 20; // Extend chain
+          if (myCount === 1 && emptyCount === 1) score += 30; // Open-ended 2-in-a-row (Kill shot setup)
+
+          // Check Opponent (Disruption Potential - secondary priority)
+          let opCount = 0;
+           const opType = opponent === 'X' ? PieceType.X : PieceType.O;
+          if (isValid({r: r+dr, c: c+dc}, rows, cols) && grid[r+dr][c+dc].type === opType) opCount++;
+          if (isValid({r: r-dr, c: c-dc}, rows, cols) && grid[r-dr][c-dc].type === opType) opCount++;
+          
+          if (opCount >= 1) score += 15; // Block potential chain
+      }
+      return score;
+  };
+
+  // 3. PRIORITY: Handle Threats (Defense)
+  if (threats.length > 0) {
+      // Sort all empty cells by heuristic value to find best "filler" spots
+      const sortedEmpty = [...emptyCells].sort((a, b) => getScore(b.r, b.c) - getScore(a.r, a.c));
+
+      // Strategy Selection based on number of threats
+      const useRects = threats.length > 2; // Need 3 blocks
+      const useTriangles = threats.length === 2 || (threats.length === 1 && Math.random() > 0.4); // Prefer Triangles for defense unless feeling aggressive
+      
+      if (useRects) {
+          // Use Rectangles (3 blocks available)
+          const actions = [];
+          // Prioritize blocking known threats
+          for(let i=0; i<3; i++) {
+              let target = threats[i];
+              if (!target) {
+                   // If we blocked all threats, put remaining blocks on best heuristic spots
+                   target = sortedEmpty.find(c => !actions.some(a => a.target.r === c.r && a.target.c === c.c))!;
+              }
+              if (target) actions.push({ type: ActionType.PLACE_RECTANGLE, target });
+          }
+          return { moveId: 'block-rect', actions };
+
+      } else if (useTriangles) {
+          // Use Triangles (2 blocks available)
+          const actions = [];
+          
+          // 1st Triangle: Block primary threat
+          actions.push({ type: ActionType.PLACE_TRIANGLE, target: threats[0] });
+          
+          // 2nd Triangle: Block secondary threat OR Best Strategic spot
+          let secondTarget = threats[1];
+          if (!secondTarget) {
+              // Find best empty spot that isn't the first target
+              secondTarget = sortedEmpty.find(c => !(c.r === threats[0].r && c.c === threats[0].c))!;
+          }
+          actions.push({ type: ActionType.PLACE_TRIANGLE, target: secondTarget });
+          
+          return { moveId: 'block-triangle', actions };
+
+      } else {
+          // Single threat, aggressive block with Token?
+          // This blocks the win AND places our piece.
+          return {
+              moveId: 'basic-token',
+              actions: [{ type: ActionType.PLACE_TOKEN, target: threats[0] }]
+          };
+      }
+  }
+
+  // 4. PRIORITY: Offense (No immediate threats)
+  let bestSpot = emptyCells[0];
+  let bestVal = -Infinity;
+  for (const cell of emptyCells) {
+      const val = getScore(cell.r, cell.c);
+      if (val > bestVal) {
+          bestVal = val;
+          bestSpot = cell;
+      }
+  }
+
+  // Occasional Expansion if board is stale or no good moves (score < 5), but rare (5%)
+  if (bestVal < 5 && Math.random() < 0.05) {
+       const isRow = Math.random() < 0.5;
+       const index = Math.floor(Math.random() * (isRow ? rows : cols));
+       return {
+            moveId: 'expand',
+            actions: [{ type: ActionType.DRAW_LINE, target: { index, isRow } }] 
+       };
+  }
+
   return {
-    moveId: 'expand',
-    actions: [{ type: ActionType.DRAW_LINE, target: { index: rows, isRow: true } }] 
+      moveId: 'basic-token',
+      actions: [{ type: ActionType.PLACE_TOKEN, target: bestSpot }]
   };
 };

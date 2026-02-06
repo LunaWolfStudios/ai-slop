@@ -321,6 +321,12 @@ const App: React.FC = () => {
                         currentGrid[r][c].type = PieceType.TRIANGLE;
                         aiLog.push(`Placed Triangle (${r+1},${c+1})`);
                     }
+                } else if (act.type === ActionType.PLACE_RECTANGLE) {
+                    if (act.target && currentGrid[r][c].type === PieceType.EMPTY) {
+                        currentGrid[r][c].type = PieceType.RECTANGLE;
+                        currentGrid[r][c].health = MAX_HEALTH;
+                        aiLog.push(`Placed Rect (${r+1},${c+1})`);
+                    }
                 } else if (act.type === ActionType.DRAW_LINE) {
                     const { index, isRow } = act.target;
                     currentGrid = expandGrid(currentGrid, index, isRow);
