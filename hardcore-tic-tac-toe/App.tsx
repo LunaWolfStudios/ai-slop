@@ -46,6 +46,7 @@ const App: React.FC = () => {
   // View State
   const [zoomLevel, setZoomLevel] = useState(1);
   const boardContainerRef = useRef<HTMLDivElement>(null);
+  const [turnNotification, setTurnNotification] = useState<{player: Player, text: string} | null>(null);
 
   // UI State
   const [showTutorial, setShowTutorial] = useState(true);
@@ -60,6 +61,16 @@ const App: React.FC = () => {
       
       const idx = order.indexOf(curr);
       return order[(idx + 1) % order.length];
+  };
+
+  const getNotificationColor = (p: Player) => {
+      switch(p) {
+          case 'X': return 'text-neon-blue drop-shadow-[0_0_10px_rgba(0,243,255,0.8)] border-neon-blue';
+          case 'O': return 'text-neon-pink drop-shadow-[0_0_10px_rgba(255,0,255,0.8)] border-neon-pink';
+          case 'Z': return 'text-neon-orange drop-shadow-[0_0_10px_rgba(255,85,0,0.8)] border-neon-orange';
+          case 'A': return 'text-neon-purple drop-shadow-[0_0_10px_rgba(191,0,255,0.8)] border-neon-purple';
+          default: return 'text-white border-white';
+      }
   };
 
   const saveStateForUndo = () => {
@@ -174,6 +185,27 @@ const App: React.FC = () => {
         }
     }
   }, [remainingActions, hasActedInTurn, winner]);
+
+  // Turn Notification Trigger
+  useEffect(() => {
+     if (winner) {
+         setTurnNotification(null);
+         return;
+     }
+     
+     // Set notification for new turn
+     setTurnNotification({
+         player: currentPlayer,
+         text: `${currentPlayer}'s TURN`
+     });
+
+     // Clear it after animation finishes
+     const timer = setTimeout(() => {
+         setTurnNotification(null);
+     }, 1500); 
+
+     return () => clearTimeout(timer);
+  }, [currentPlayer, turnCount, winner]);
 
 
   const triggerErrorFlash = (r: number, c: number) => {
@@ -482,6 +514,19 @@ const App: React.FC = () => {
   return (
     <div className="relative w-screen h-[100dvh] bg-gray-950 overflow-hidden flex flex-col font-sans">
       
+      {/* Turn Notification Popup */}
+      {turnNotification && !winner && (
+        <div key={turnNotification.text} className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+            <div className={`
+                text-5xl md:text-8xl font-black tracking-tighter italic border-4 p-8 rounded-xl bg-black/80 backdrop-blur-sm
+                animate-popup
+                ${getNotificationColor(turnNotification.player)}
+            `}>
+                {turnNotification.text}
+            </div>
+        </div>
+      )}
+
       {/* Header / HUD */}
       <header className="absolute top-0 left-0 w-full p-2 md:p-4 flex justify-between items-center z-40 pointer-events-none">
         <div className="flex items-center gap-2 pointer-events-auto">
