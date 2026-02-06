@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Grid, CellData, PieceType, ActionType, Coordinates } from '../types';
 import { MAX_HEALTH, CELL_SIZE } from '../constants';
-import { Hexagon, Square, Triangle, Circle, X } from 'lucide-react';
+import { Square, Triangle, Circle, X } from 'lucide-react';
 
 interface BoardProps {
   grid: Grid;
@@ -37,6 +37,38 @@ const Board: React.FC<BoardProps> = ({
         return <X size={40} className="text-neon-blue drop-shadow-[0_0_8px_rgba(0,243,255,0.8)]" />;
       case PieceType.O:
         return <Circle size={36} className="text-neon-pink drop-shadow-[0_0_8px_rgba(255,0,255,0.8)]" />;
+      case PieceType.Z:
+        return (
+          <svg 
+            width="38" 
+            height="38" 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            stroke="currentColor" 
+            strokeWidth="2.5" 
+            strokeLinecap="round" 
+            strokeLinejoin="round" 
+            className="text-neon-purple drop-shadow-[0_0_8px_rgba(191,0,255,0.8)]"
+          >
+            <path d="M4 4h16l-16 16h16" />
+          </svg>
+        );
+      case PieceType.A:
+        return (
+           <svg 
+            width="38" 
+            height="38" 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            stroke="currentColor" 
+            strokeWidth="2.5" 
+            strokeLinecap="round" 
+            strokeLinejoin="round" 
+            className="text-neon-orange drop-shadow-[0_0_8px_rgba(255,85,0,0.8)]"
+          >
+            <path d="M3 21l9-18 9 18M5 13h14" />
+          </svg>
+        );
       case PieceType.TRIANGLE:
         return <Triangle size={36} className="text-neon-yellow fill-neon-yellow drop-shadow-[0_0_8px_rgba(252,238,10,0.5)]" />;
       case PieceType.RECTANGLE:

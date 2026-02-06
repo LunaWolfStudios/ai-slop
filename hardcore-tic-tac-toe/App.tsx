@@ -10,15 +10,18 @@ import {
   ActionConfig, 
   CellData,
   Coordinates,
-  HistoryEntry
+  HistoryEntry,
+  GameStateSnapshot
 } from './types';
 import { INITIAL_GRID, MOVES, MAX_HEALTH, CELL_SIZE } from './constants';
 import { expandGrid, checkWin, getAIMove } from './utils/gameLogic';
-import { Info, RotateCcw, Users, Bot, Expand, ZoomIn, ZoomOut, Maximize } from 'lucide-react';
+import { Info, RotateCcw, Users, Bot, Expand, ZoomIn, ZoomOut, Maximize, Undo2 } from 'lucide-react';
+
+type GameMode = 'PvAI' | '2P' | '3P' | '4P';
 
 const App: React.FC = () => {
   // Game Configuration
-  const [gameMode, setGameMode] = useState<'PvP' | 'PvAI'>('PvAI');
+  const [gameMode, setGameMode] = useState<GameMode>('PvAI');
   
   // Game State
   const [grid, setGrid] = useState<CellData[][]>(INITIAL_GRID);
@@ -29,13 +32,16 @@ const App: React.FC = () => {
   
   // Stats & History
   const [history, setHistory] = useState<HistoryEntry[]>([]);
-  const [sessionWins, setSessionWins] = useState<{ X: number, O: number }>({ X: 0, O: 0 });
+  const [sessionWins, setSessionWins] = useState<Record<Player, number>>({ X: 0, O: 0, Z: 0, A: 0 });
 
   // Turn State
   const [remainingActions, setRemainingActions] = useState<Partial<Record<ActionType, number>>>({});
   const [currentConfigId, setCurrentConfigId] = useState<string | null>(null);
   const [currentActionType, setCurrentActionType] = useState<ActionType | null>(null);
   const [hasActedInTurn, setHasActedInTurn] = useState(false);
+
+  // Undo Stack
+  const undoStackRef = useRef<GameStateSnapshot[]>([]);
 
   // View State
   const [zoomLevel, setZoomLevel] = useState(1);
@@ -46,8 +52,85 @@ const App: React.FC = () => {
 
   // --- Helpers ---
 
+  const getNextPlayer = (curr: Player, mode: GameMode): Player => {
+      if (mode === 'PvAI' || mode === '2P') return curr === 'X' ? 'O' : 'X';
+      
+      const order: Player[] = ['X', 'O', 'Z'];
+      if (mode === '4P') order.push('A');
+      
+      const idx = order.indexOf(curr);
+      return order[(idx + 1) % order.length];
+  };
+
+  const saveStateForUndo = () => {
+      if (undoStackRef.current.length > 50) {
+          undoStackRef.current.shift(); // Limit stack size
+      }
+      
+      const snapshot: GameStateSnapshot = {
+          grid: grid.map(row => row.map(c => ({...c}))), // Deep copy
+          currentPlayer,
+          turnCount,
+          winner,
+          winningCells: [...winningCells],
+          remainingActions: {...remainingActions},
+          currentConfigId,
+          currentActionType,
+          hasActedInTurn,
+          history: [...history],
+          sessionWins: {...sessionWins}
+      };
+      undoStackRef.current.push(snapshot);
+  };
+
+  const handleUndo = () => {
+      if (undoStackRef.current.length === 0) return;
+      
+      // In PvAI, if it's currently AI's turn (which is instant), we can't really undo "into" it easily.
+      // But typically we are in Human turn. If we undo, we want to go back to Human's PREVIOUS turn.
+      // Or if we made a move but haven't ended turn, we undo to start of turn.
+      
+      let stepsToPop = 1;
+      
+      // Smart Undo for PvAI: 
+      // If we are X and we have NOT acted yet, hitting undo means we want to go back to before O played.
+      // So we pop 2 states (O's turn, then back to X's turn).
+      if (gameMode === 'PvAI' && currentPlayer === 'X' && !hasActedInTurn) {
+         // Check if we have enough history to go back past AI
+         if (undoStackRef.current.length >= 2) {
+             // Peek to ensure the previous state was indeed O's turn (it should be)
+             stepsToPop = 2; 
+         }
+      }
+
+      let targetState: GameStateSnapshot | undefined;
+      
+      for(let i=0; i<stepsToPop; i++) {
+          targetState = undoStackRef.current.pop();
+      }
+
+      if (targetState) {
+          setGrid(targetState.grid);
+          setCurrentPlayer(targetState.currentPlayer);
+          setTurnCount(targetState.turnCount);
+          setWinner(targetState.winner);
+          setWinningCells(targetState.winningCells);
+          setRemainingActions(targetState.remainingActions);
+          setCurrentConfigId(targetState.currentConfigId);
+          setCurrentActionType(targetState.currentActionType);
+          setHasActedInTurn(targetState.hasActedInTurn);
+          setHistory(targetState.history);
+          setSessionWins(targetState.sessionWins);
+      }
+  };
+
   const switchTurn = () => {
-    setCurrentPlayer(prev => prev === 'X' ? 'O' : 'X');
+    // Only save state if we haven't already saved it during the turn via actions
+    // Actually, saveState is called before actions. 
+    // switchTurn is the result of ending turn. We don't save state HERE, 
+    // because the next state (new player) is fresh.
+    
+    setCurrentPlayer(prev => getNextPlayer(prev, gameMode));
     setTurnCount(prev => prev + 1);
     setRemainingActions({});
     setCurrentConfigId(null);
@@ -64,7 +147,7 @@ const App: React.FC = () => {
   };
 
   const updateActionState = (type: ActionType) => {
-    setHasActedInTurn(true); // Mark that user has started acting, locking config selection
+    setHasActedInTurn(true); 
 
     setRemainingActions(prev => {
       const next = { ...prev };
@@ -72,15 +155,11 @@ const App: React.FC = () => {
         next[type]!--;
       }
       
-      // Check if any sub-action of this specific type remains. 
-      // If not, try to switch to another available type automatically, 
-      // but only if the current type is exhausted.
       if (next[type] === 0) {
          const remainingTypes = Object.keys(next).filter(k => next[k as ActionType]! > 0) as ActionType[];
          if (remainingTypes.length > 0) {
              setCurrentActionType(remainingTypes[0]);
          } else {
-             // End turn if absolutely nothing left
              setTimeout(switchTurn, 200);
          }
       }
@@ -119,24 +198,19 @@ const App: React.FC = () => {
     const rows = grid.length;
     const cols = grid[0].length;
     
-    // Calculate estimated board size based on constants (approx)
-    // Label(30) + (cols * CELL_SIZE) + gaps/padding
-    const boardWidthPx = 30 + (cols * CELL_SIZE) + (cols * 4) + 60; // +60 for safety padding
+    const boardWidthPx = 30 + (cols * CELL_SIZE) + (cols * 4) + 60; 
     const boardHeightPx = 30 + (rows * CELL_SIZE) + (rows * 4) + 60;
 
     const containerWidth = boardContainerRef.current.clientWidth;
     const containerHeight = boardContainerRef.current.clientHeight;
 
-    // Calculate scale to fit
     const scaleX = containerWidth / boardWidthPx;
     const scaleY = containerHeight / boardHeightPx;
     
-    // Choose smaller scale to ensure fit, clamp between 0.2 and 1.5
     const newZoom = Math.min(Math.max(Math.min(scaleX, scaleY), 0.2), 1.5);
 
     setZoomLevel(newZoom);
     
-    // Center scroll after a brief delay to allow React to render scaling
     setTimeout(() => {
         if(boardContainerRef.current) {
              const { scrollWidth, scrollHeight, clientWidth, clientHeight } = boardContainerRef.current;
@@ -149,21 +223,21 @@ const App: React.FC = () => {
     }, 50);
   };
 
-  // Center board on initial load
   useEffect(() => {
-      // Small delay to ensure DOM is ready
       setTimeout(fitToScreen, 100);
   }, []);
 
   // --- Interaction Handlers ---
 
   const handleSelectAction = (config: ActionConfig) => {
-    if (hasActedInTurn) return; // Prevention double-check, though button is disabled
+    if (hasActedInTurn) return; 
 
+    // Save State before starting a configuration (first time in turn)
+    // Wait, users can change config if they haven't acted. 
+    // We only need to save state when they *commit* an action.
+    
     setCurrentConfigId(config.id);
     setRemainingActions({ ...config.cost });
-    
-    // Set initial action type
     const firstType = Object.keys(config.cost)[0] as ActionType;
     setCurrentActionType(firstType);
   };
@@ -175,6 +249,7 @@ const App: React.FC = () => {
   };
 
   const handleEndTurn = () => {
+      saveStateForUndo(); // Save state before passing (so we can undo the pass)
       if (!hasActedInTurn) {
           logAction("Passed Turn");
       }
@@ -185,8 +260,6 @@ const App: React.FC = () => {
     if (winner || !currentActionType) return;
     
     const cell = grid[r][c];
-    
-    // Logic based on current action type
     let actionSuccess = false;
     let error = false;
     let logMsg = '';
@@ -194,12 +267,16 @@ const App: React.FC = () => {
 
     switch (currentActionType) {
       case ActionType.PLACE_TOKEN:
-        // Rule: P1 cannot place first token in center of 3x3
         if (turnCount === 1 && currentPlayer === 'X' && r === 1 && c === 1 && grid.length === 3 && grid[0].length === 3) {
             triggerErrorFlash(r, c);
             error = true;
         } else if (cell.type === PieceType.EMPTY) {
-            newGrid[r][c].type = currentPlayer === 'X' ? PieceType.X : PieceType.O;
+            let pType = PieceType.X;
+            if (currentPlayer === 'O') pType = PieceType.O;
+            if (currentPlayer === 'Z') pType = PieceType.Z;
+            if (currentPlayer === 'A') pType = PieceType.A;
+            
+            newGrid[r][c].type = pType;
             actionSuccess = true;
             logMsg = `Placed Token at (${r+1},${c+1})`;
         }
@@ -257,17 +334,17 @@ const App: React.FC = () => {
     if (error) return; 
 
     if (actionSuccess) {
+        saveStateForUndo(); // Push current state to stack before modifying
         setGrid(newGrid);
         logAction(logMsg);
         
-        // Check Win immediately after token placement
         if (currentActionType === ActionType.PLACE_TOKEN) {
             const winResult = checkWin(newGrid);
             if (winResult.winner) {
                 setWinner(winResult.winner);
                 setWinningCells(winResult.winningCells);
                 setSessionWins(prev => ({ ...prev, [winResult.winner!]: prev[winResult.winner!] + 1 }));
-                setRemainingActions({}); // End turn immediately
+                setRemainingActions({}); 
                 return; 
             }
         }
@@ -279,6 +356,7 @@ const App: React.FC = () => {
   const handleLineClick = (index: number, isRow: boolean) => {
       if (winner || currentActionType !== ActionType.DRAW_LINE) return;
 
+      saveStateForUndo();
       const newGrid = expandGrid(grid, index, isRow);
       setGrid(newGrid);
       logAction(`Drew Line ${isRow ? 'Row' : 'Col'} ${index + 1}`);
@@ -297,11 +375,15 @@ const App: React.FC = () => {
 
   // --- AI Loop ---
   useEffect(() => {
+    // AI only plays as 'O' in PvAI mode
     if (gameMode === 'PvAI' && currentPlayer === 'O' && !winner) {
         const timer = setTimeout(() => {
             const aiMove = getAIMove(grid, 'O', MOVES);
             const config = MOVES.find(m => m.id === aiMove.moveId);
             if (!config) return;
+
+            // Save state before AI moves so we can Undo it
+            saveStateForUndo();
 
             let currentGrid = grid.map(row => row.map(c => ({...c})));
             let won = false;
@@ -343,7 +425,6 @@ const App: React.FC = () => {
             });
 
             setGrid(currentGrid);
-            // Batch log AI moves
             setHistory(prev => [...prev, ...aiLog.map(desc => ({ turn: turnCount, player: 'O' as Player, description: desc }))]);
 
             if (won) {
@@ -355,7 +436,7 @@ const App: React.FC = () => {
         }, 1000);
         return () => clearTimeout(timer);
     }
-  }, [currentPlayer, gameMode, winner, grid]); // Dependencies
+  }, [currentPlayer, gameMode, winner, grid]);
 
   // --- Reset ---
   const resetGame = () => {
@@ -373,7 +454,15 @@ const App: React.FC = () => {
     setCurrentConfigId(null);
     setHasActedInTurn(false);
     setHistory([]);
-    fitToScreen(); // Reset Zoom
+    undoStackRef.current = [];
+    fitToScreen(); 
+  };
+
+  const toggleGameMode = () => {
+      const modes: GameMode[] = ['PvAI', '2P', '3P', '4P'];
+      const idx = modes.indexOf(gameMode);
+      setGameMode(modes[(idx + 1) % modes.length]);
+      resetGame();
   };
 
   return (
@@ -387,8 +476,12 @@ const App: React.FC = () => {
             </h1>
         </div>
         <div className="flex gap-2 md:gap-4 pointer-events-auto">
-             <button onClick={() => setGameMode(m => m === 'PvP' ? 'PvAI' : 'PvP')} className="flex items-center gap-2 bg-gray-800 text-white px-2 py-1 md:px-3 md:py-1 rounded hover:bg-gray-700 border border-gray-600 text-xs md:text-sm">
-                {gameMode === 'PvP' ? <Users size={14}/> : <Bot size={14}/>}
+             <button onClick={handleUndo} className="flex items-center gap-2 bg-gray-800 text-white px-3 py-1 rounded hover:bg-gray-700 border border-gray-600 text-xs md:text-sm active:scale-95 transition-transform" title="Undo">
+                <Undo2 size={16} />
+                <span className="hidden sm:inline">UNDO</span>
+             </button>
+             <button onClick={toggleGameMode} className="flex items-center gap-2 bg-gray-800 text-white px-2 py-1 md:px-3 md:py-1 rounded hover:bg-gray-700 border border-gray-600 text-xs md:text-sm min-w-[70px] justify-center">
+                {gameMode === 'PvAI' ? <Bot size={14}/> : <Users size={14}/>}
                 {gameMode}
              </button>
              <button onClick={resetGame} className="bg-gray-800 text-white p-2 rounded hover:bg-gray-700 border border-gray-600">
@@ -420,33 +513,25 @@ const App: React.FC = () => {
           </button>
       </div>
 
-      {/* Main Game Area with Pan/Zoom */}
+      {/* Main Game Area */}
       <main 
          ref={boardContainerRef}
          className="flex-1 overflow-auto bg-[url('https://www.transparenttextures.com/patterns/dark-matter.png')] relative flex items-center justify-center cursor-move"
          onMouseDown={(e) => {
-             // Simple drag to scroll implementation
              const ele = boardContainerRef.current;
              if (!ele) return;
-             
-             // Check if clicking on board content or just background
-             // For simplicity, we just enable scrolling on container natively
-             // Mouse drag scrolling helper:
              let pos = { left: ele.scrollLeft, top: ele.scrollTop, x: e.clientX, y: e.clientY };
-             
              const mouseMoveHandler = (e: MouseEvent) => {
                  const dx = e.clientX - pos.x;
                  const dy = e.clientY - pos.y;
                  ele.scrollTop = pos.top - dy;
                  ele.scrollLeft = pos.left - dx;
              };
-             
              const mouseUpHandler = () => {
                  document.removeEventListener('mousemove', mouseMoveHandler);
                  document.removeEventListener('mouseup', mouseUpHandler);
                  ele.style.cursor = 'grab';
              };
-             
              ele.style.cursor = 'grabbing';
              document.addEventListener('mousemove', mouseMoveHandler);
              document.addEventListener('mouseup', mouseUpHandler);
@@ -486,7 +571,10 @@ const App: React.FC = () => {
         <div className="absolute inset-x-0 bottom-0 z-[60] flex flex-col items-center justify-end pointer-events-none">
             <div className="w-full max-w-lg mb-20 p-6 bg-gray-900/90 border-t-4 border-neon-green backdrop-blur-md rounded-t-3xl text-center shadow-[0_-10px_50px_rgba(0,0,0,0.8)] pointer-events-auto animate-in slide-in-from-bottom-20 duration-500">
                 <h2 className="text-5xl font-black mb-2 text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">
-                    {winner === 'X' ? <span className="text-neon-blue">PLAYER X</span> : <span className="text-neon-pink">PLAYER O</span>}
+                    {winner === 'X' ? <span className="text-neon-blue">PLAYER X</span> : 
+                     winner === 'O' ? <span className="text-neon-pink">PLAYER O</span> :
+                     winner === 'Z' ? <span className="text-neon-purple">PLAYER Z</span> :
+                     <span className="text-neon-orange">PLAYER A</span>}
                 </h2>
                 <h3 className="text-3xl text-neon-green mb-6 font-bold tracking-widest">VICTORY</h3>
                 <div className="flex justify-center gap-4">
@@ -504,31 +592,28 @@ const App: React.FC = () => {
              <div className="max-w-2xl bg-gray-900 border border-gray-700 rounded-lg p-6 text-gray-300 shadow-2xl">
                  <h2 className="text-2xl font-bold text-white mb-4 border-b border-gray-700 pb-2">How to Play</h2>
                  <div className="space-y-4 mb-6 h-96 overflow-y-auto pr-2">
-                     <p><strong>Objective:</strong> Get 3 Win Tokens (X or O) in a row. Horizontally, Vertically, or Diagonally.</p>
+                     <p><strong>Objective:</strong> Get 3 Win Tokens in a row.</p>
                      
                      <div className="p-3 bg-gray-800 rounded">
-                        <h4 className="text-neon-blue font-bold">1. Infinite Board</h4>
-                        <p className="text-sm">Use the <Expand size={14} className="inline"/> <strong>Expand</strong> tool to draw lines. Drawing a line adds a new row or column, pushing existing pieces apart.</p>
+                        <h4 className="text-neon-blue font-bold">Game Modes</h4>
+                        <p className="text-sm">
+                            <ul className="list-disc pl-4 mt-1 space-y-1">
+                                <li><strong>PvAI:</strong> X (Human) vs O (Bot)</li>
+                                <li><strong>2P:</strong> X vs O (Hotseat)</li>
+                                <li><strong>3P:</strong> X vs O vs Z</li>
+                                <li><strong>4P:</strong> X vs O vs Z vs A</li>
+                            </ul>
+                        </p>
                      </div>
 
                      <div className="p-3 bg-gray-800 rounded">
-                        <h4 className="text-neon-yellow font-bold">2. Blocking</h4>
-                        <p className="text-sm">Place <strong>Triangles</strong> (Permanent) or <strong>Rectangles</strong> (Destructible) to block your opponent.</p>
-                     </div>
-
-                     <div className="p-3 bg-gray-800 rounded">
-                        <h4 className="text-neon-pink font-bold">3. Destruction</h4>
-                        <p className="text-sm">Rectangles can be destroyed. Use the Destroy tool to chip away their health.</p>
-                     </div>
-                     
-                     <div className="p-3 bg-gray-800 rounded">
-                        <h4 className="text-indigo-400 font-bold">4. Dots</h4>
-                        <p className="text-sm">Place Dots on empty cells. These cells allow Win Tokens but CANNOT be blocked by Triangles or Rectangles.</p>
+                        <h4 className="text-neon-yellow font-bold">Blocking & Expansion</h4>
+                        <p className="text-sm">Use the Expand tool to add rows/cols. Place Triangles or Rectangles to block paths.</p>
                      </div>
 
                      <div className="p-3 bg-gray-800 rounded border border-gray-600">
-                        <h4 className="text-white font-bold">Combos & Flexibility</h4>
-                        <p className="text-sm">You can change your selected tool as long as you haven't used it yet. You can perform combo actions in any order. You can end your turn early at any time.</p>
+                        <h4 className="text-white font-bold">Undo</h4>
+                        <p className="text-sm">Misclick? Use the Undo button in the top bar to revert the previous action.</p>
                      </div>
                  </div>
                  <button onClick={() => setShowTutorial(false)} className="w-full py-3 bg-white text-black font-bold rounded hover:bg-gray-200">

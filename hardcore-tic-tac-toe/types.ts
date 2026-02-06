@@ -1,9 +1,11 @@
-export type Player = 'X' | 'O';
+export type Player = 'X' | 'O' | 'Z' | 'A';
 
 export enum PieceType {
   EMPTY = 'EMPTY',
   X = 'X',
   O = 'O',
+  Z = 'Z',
+  A = 'A',
   TRIANGLE = 'TRIANGLE', // Permanent blocker
   RECTANGLE = 'RECTANGLE', // Destructible blocker
 }
@@ -53,10 +55,25 @@ export interface GameState {
   isTutorialActive: boolean;
   tutorialStep: number;
   hasActedInTurn: boolean; // Tracks if user has committed to a move
-  sessionWins: { X: number, O: number };
+  sessionWins: Record<Player, number>;
 }
 
 export interface Coordinates {
   r: number; // Row
   c: number; // Col
+}
+
+// Snapshot for Undo functionality
+export interface GameStateSnapshot {
+    grid: Grid;
+    currentPlayer: Player;
+    turnCount: number;
+    winner: Player | null;
+    winningCells: Coordinates[];
+    remainingActions: Partial<Record<ActionType, number>>;
+    currentConfigId: string | null;
+    currentActionType: ActionType | null;
+    hasActedInTurn: boolean;
+    history: HistoryEntry[];
+    sessionWins: Record<Player, number>;
 }

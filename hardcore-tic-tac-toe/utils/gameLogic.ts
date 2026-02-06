@@ -38,7 +38,14 @@ export const checkWin = (grid: Grid): { winner: Player | null, winningCells: Coo
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const cell = grid[r][c];
-      if (cell.type === PieceType.X || cell.type === PieceType.O) {
+      
+      // Check if the piece is a Player Piece (X, O, Z, A)
+      if (
+          cell.type === PieceType.X || 
+          cell.type === PieceType.O || 
+          cell.type === PieceType.Z || 
+          cell.type === PieceType.A
+      ) {
         const player = cell.type as Player;
 
         for (const [dr, dc] of DIRECTIONS) {
@@ -75,7 +82,10 @@ const isValid = (p: Coordinates, rows: number, cols: number): boolean => {
 export const getAIMove = (grid: Grid, player: Player, availableMoves: typeof import('../constants').MOVES): { moveId: string, actions: { type: ActionType, target: any }[] } => {
   const rows = grid.length;
   const cols = grid[0].length;
-  const opponent = player === 'X' ? 'O' : 'X';
+  
+  // AI targets whoever is NOT itself. For simplicity in multi-agent contexts, it treats anyone not-self as opponent.
+  // But strictly for PvAI, AI is O, Player is X.
+  const opponent = 'X'; 
 
   const emptyCells: Coordinates[] = [];
   for(let r=0; r<rows; r++){
@@ -97,7 +107,15 @@ export const getAIMove = (grid: Grid, player: Player, availableMoves: typeof imp
       const cell = grid[r][c];
       if (cell.type !== PieceType.EMPTY) return false;
       const originalType = cell.type;
-      cell.type = who === 'X' ? PieceType.X : PieceType.O; // Direct mutation for check
+      
+      // Map Player to PieceType
+      let pType = PieceType.EMPTY;
+      if (who === 'X') pType = PieceType.X;
+      if (who === 'O') pType = PieceType.O;
+      if (who === 'Z') pType = PieceType.Z;
+      if (who === 'A') pType = PieceType.A;
+
+      cell.type = pType; // Direct mutation for check
       const result = checkWin(grid).winner === who;
       cell.type = originalType; // Revert
       return result;
@@ -134,23 +152,26 @@ export const getAIMove = (grid: Grid, player: Player, availableMoves: typeof imp
           // Check Self (Offense Potential)
           let myCount = 0;
           let emptyCount = 0;
+          
+          const myPiece = player === 'X' ? PieceType.X : PieceType.O; // Simplified for PvAI
+
           if (isValid({r: r+dr, c: c+dc}, rows, cols)) {
-              if (grid[r+dr][c+dc].type === (player === 'X' ? PieceType.X : PieceType.O)) myCount++;
+              if (grid[r+dr][c+dc].type === myPiece) myCount++;
               else if (grid[r+dr][c+dc].type === PieceType.EMPTY) emptyCount++;
           }
           if (isValid({r: r-dr, c: c-dc}, rows, cols)) {
-              if (grid[r-dr][c-dc].type === (player === 'X' ? PieceType.X : PieceType.O)) myCount++;
+              if (grid[r-dr][c-dc].type === myPiece) myCount++;
               else if (grid[r-dr][c-dc].type === PieceType.EMPTY) emptyCount++;
           }
           
           if (myCount >= 1) score += 20; // Extend chain
           if (myCount === 1 && emptyCount === 1) score += 30; // Open-ended 2-in-a-row (Kill shot setup)
 
-          // Check Opponent (Disruption Potential - secondary priority)
+          // Check Opponent (Disruption Potential)
+          // Just check X for now since AI is O
           let opCount = 0;
-           const opType = opponent === 'X' ? PieceType.X : PieceType.O;
-          if (isValid({r: r+dr, c: c+dc}, rows, cols) && grid[r+dr][c+dc].type === opType) opCount++;
-          if (isValid({r: r-dr, c: c-dc}, rows, cols) && grid[r-dr][c-dc].type === opType) opCount++;
+          if (isValid({r: r+dr, c: c+dc}, rows, cols) && grid[r+dr][c+dc].type === PieceType.X) opCount++;
+          if (isValid({r: r-dr, c: c-dc}, rows, cols) && grid[r-dr][c-dc].type === PieceType.X) opCount++;
           
           if (opCount >= 1) score += 15; // Block potential chain
       }

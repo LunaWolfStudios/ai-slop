@@ -29,6 +29,16 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
   const isActionActive = (configId: string) => currentTurnConfigId === configId;
   const isMidTurn = currentTurnConfigId !== null;
 
+  const getPlayerColor = (p: Player) => {
+      switch(p) {
+          case 'X': return 'text-neon-blue';
+          case 'O': return 'text-neon-pink';
+          case 'Z': return 'text-neon-purple';
+          case 'A': return 'text-neon-orange';
+          default: return 'text-white';
+      }
+  };
+
   const getIcon = (id: string) => {
     switch (id) {
       case 'basic-token': return <MousePointer2 size={20} />;
@@ -111,7 +121,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
                 </div>
             ) : (
                 <div className="flex justify-between w-full items-center">
-                    <div className={`text-lg md:text-xl font-bold font-mono ${currentPlayer === 'X' ? 'text-neon-blue' : 'text-neon-pink'}`}>
+                    <div className={`text-lg md:text-xl font-bold font-mono ${getPlayerColor(currentPlayer)}`}>
                         PLAYER {currentPlayer}
                     </div>
                     <button 
