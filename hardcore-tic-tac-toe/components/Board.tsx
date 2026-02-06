@@ -39,34 +39,38 @@ const Board: React.FC<BoardProps> = ({
         return <Circle size={36} className="text-neon-pink drop-shadow-[0_0_8px_rgba(255,0,255,0.8)]" />;
       case PieceType.Z:
         return (
-          <svg 
-            width="38" 
-            height="38" 
-            viewBox="0 0 24 24" 
-            fill="none" 
-            stroke="currentColor" 
-            strokeWidth="2.5" 
-            strokeLinecap="round" 
-            strokeLinejoin="round" 
-            className="text-neon-orange drop-shadow-[0_0_8px_rgba(255,85,0,0.8)]"
-          >
+          <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-neon-orange drop-shadow-[0_0_8px_rgba(255,85,0,0.8)]">
             <path d="M4 4h16l-16 16h16" />
           </svg>
         );
       case PieceType.A:
         return (
-           <svg 
-            width="38" 
-            height="38" 
-            viewBox="0 0 24 24" 
-            fill="none" 
-            stroke="currentColor" 
-            strokeWidth="2.5" 
-            strokeLinecap="round" 
-            strokeLinejoin="round" 
-            className="text-neon-purple drop-shadow-[0_0_8px_rgba(191,0,255,0.8)]"
-          >
+           <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-neon-purple drop-shadow-[0_0_8px_rgba(191,0,255,0.8)]">
             <path d="M3 21l9-18 9 18M5 13h14" />
+          </svg>
+        );
+      case PieceType.M:
+        return (
+           <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-neon-m drop-shadow-[0_0_8px_rgba(41,98,255,0.8)]">
+            <path d="M4 21V4l8 8 8-8v17" />
+          </svg>
+        );
+      case PieceType.S:
+        return (
+           <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-neon-s drop-shadow-[0_0_8px_rgba(0,230,118,0.8)]">
+             <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+          </svg>
+        );
+      case PieceType.T:
+        return (
+           <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-neon-t drop-shadow-[0_0_8px_rgba(255,0,64,0.8)]">
+            <path d="M4 6h16M12 6v14" />
+          </svg>
+        );
+      case PieceType.K:
+        return (
+           <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-neon-k drop-shadow-[0_0_8px_rgba(226,232,240,0.8)]">
+            <path d="M4 4v16M20 4l-12 8 12 8M4 12h4" />
           </svg>
         );
       case PieceType.TRIANGLE:

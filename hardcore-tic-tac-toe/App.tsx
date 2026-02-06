@@ -13,11 +13,11 @@ import {
   HistoryEntry,
   GameStateSnapshot
 } from './types';
-import { INITIAL_GRID, MOVES, MAX_HEALTH, CELL_SIZE } from './constants';
+import { INITIAL_GRID, MOVES, MAX_HEALTH, CELL_SIZE, createEmptyCell } from './constants';
 import { expandGrid, checkWin, getAIMove } from './utils/gameLogic';
 import { Info, RotateCcw, Users, Bot, Expand, ZoomIn, ZoomOut, Maximize, Undo2 } from 'lucide-react';
 
-type GameMode = 'PvAI' | '2P' | '3P' | '4P';
+type GameMode = 'PvAI' | '2P' | '3P' | '4P' | '5P' | '6P' | '7P' | '8P';
 
 const App: React.FC = () => {
   // Game Configuration
@@ -32,7 +32,9 @@ const App: React.FC = () => {
   
   // Stats & History
   const [history, setHistory] = useState<HistoryEntry[]>([]);
-  const [sessionWins, setSessionWins] = useState<Record<Player, number>>({ X: 0, O: 0, Z: 0, A: 0 });
+  const [sessionWins, setSessionWins] = useState<Record<Player, number>>({ 
+      X: 0, O: 0, Z: 0, A: 0, M: 0, S: 0, T: 0, K: 0 
+  });
 
   // Turn State
   const [remainingActions, setRemainingActions] = useState<Partial<Record<ActionType, number>>>({});
@@ -53,11 +55,22 @@ const App: React.FC = () => {
 
   // --- Helpers ---
 
+  const getInitialGridSize = (mode: GameMode) => {
+    if (['PvAI', '2P', '3P'].includes(mode)) return 3;
+    if (['4P', '5P'].includes(mode)) return 4;
+    if (['6P', '7P'].includes(mode)) return 5;
+    return 6; // 8P
+  };
+
   const getNextPlayer = (curr: Player, mode: GameMode): Player => {
       if (mode === 'PvAI' || mode === '2P') return curr === 'X' ? 'O' : 'X';
       
       const order: Player[] = ['X', 'O', 'Z'];
       if (mode === '4P') order.push('A');
+      if (mode === '5P') order.push('A', 'M');
+      if (mode === '6P') order.push('A', 'M', 'S');
+      if (mode === '7P') order.push('A', 'M', 'S', 'T');
+      if (mode === '8P') order.push('A', 'M', 'S', 'T', 'K');
       
       const idx = order.indexOf(curr);
       return order[(idx + 1) % order.length];
@@ -69,6 +82,10 @@ const App: React.FC = () => {
           case 'O': return 'text-neon-pink drop-shadow-[0_0_10px_rgba(255,0,255,0.8)] border-neon-pink';
           case 'Z': return 'text-neon-orange drop-shadow-[0_0_10px_rgba(255,85,0,0.8)] border-neon-orange';
           case 'A': return 'text-neon-purple drop-shadow-[0_0_10px_rgba(191,0,255,0.8)] border-neon-purple';
+          case 'M': return 'text-neon-m drop-shadow-[0_0_10px_rgba(41,98,255,0.8)] border-neon-m';
+          case 'S': return 'text-neon-s drop-shadow-[0_0_10px_rgba(0,230,118,0.8)] border-neon-s';
+          case 'T': return 'text-neon-t drop-shadow-[0_0_10px_rgba(255,0,64,0.8)] border-neon-t';
+          case 'K': return 'text-neon-k drop-shadow-[0_0_10px_rgba(226,232,240,0.8)] border-neon-k';
           default: return 'text-white border-white';
       }
   };
@@ -316,6 +333,10 @@ const App: React.FC = () => {
             if (currentPlayer === 'O') pType = PieceType.O;
             if (currentPlayer === 'Z') pType = PieceType.Z;
             if (currentPlayer === 'A') pType = PieceType.A;
+            if (currentPlayer === 'M') pType = PieceType.M;
+            if (currentPlayer === 'S') pType = PieceType.S;
+            if (currentPlayer === 'T') pType = PieceType.T;
+            if (currentPlayer === 'K') pType = PieceType.K;
             
             newGrid[r][c].type = pType;
             actionSuccess = true;
@@ -484,13 +505,11 @@ const App: React.FC = () => {
   }, [currentPlayer, gameMode, winner, grid]);
 
   // --- Reset ---
-  const resetGame = () => {
-    setGrid(Array(3).fill(null).map(() => Array(3).fill(null).map(() => ({
-        type: PieceType.EMPTY,
-        id: Math.random().toString(36).substr(2, 9),
-        health: 0,
-        isDotProtected: false,
-    }))));
+  const resetGame = (mode?: GameMode) => {
+    const targetMode = mode || gameMode;
+    const size = getInitialGridSize(targetMode);
+    
+    setGrid(Array(size).fill(null).map(() => Array(size).fill(null).map(() => createEmptyCell())));
     setCurrentPlayer('X');
     setTurnCount(1);
     setWinner(null);
@@ -500,15 +519,16 @@ const App: React.FC = () => {
     setHasActedInTurn(false);
     setHistory([]);
     undoStackRef.current = [];
-    fitToScreen(); 
+    setTimeout(fitToScreen, 100);
     setDefaultAction();
   };
 
   const toggleGameMode = () => {
-      const modes: GameMode[] = ['PvAI', '2P', '3P', '4P'];
+      const modes: GameMode[] = ['PvAI', '2P', '3P', '4P', '5P', '6P', '7P', '8P'];
       const idx = modes.indexOf(gameMode);
-      setGameMode(modes[(idx + 1) % modes.length]);
-      resetGame();
+      const newMode = modes[(idx + 1) % modes.length];
+      setGameMode(newMode);
+      resetGame(newMode);
   };
 
   return (
@@ -543,7 +563,7 @@ const App: React.FC = () => {
                 {gameMode === 'PvAI' ? <Bot size={14}/> : <Users size={14}/>}
                 {gameMode}
              </button>
-             <button onClick={resetGame} className="bg-gray-800 text-white p-2 rounded hover:bg-gray-700 border border-gray-600">
+             <button onClick={() => resetGame()} className="bg-gray-800 text-white p-2 rounded hover:bg-gray-700 border border-gray-600">
                 <RotateCcw size={16} />
              </button>
              <button onClick={() => setShowTutorial(true)} className="bg-gray-800 text-white p-2 rounded hover:bg-gray-700 border border-gray-600">
@@ -633,11 +653,15 @@ const App: React.FC = () => {
                     {winner === 'X' ? <span className="text-neon-blue">PLAYER X</span> : 
                      winner === 'O' ? <span className="text-neon-pink">PLAYER O</span> :
                      winner === 'Z' ? <span className="text-neon-orange">PLAYER Z</span> :
-                     <span className="text-neon-purple">PLAYER A</span>}
+                     winner === 'A' ? <span className="text-neon-purple">PLAYER A</span> :
+                     winner === 'M' ? <span className="text-neon-m">PLAYER M</span> :
+                     winner === 'S' ? <span className="text-neon-s">PLAYER S</span> :
+                     winner === 'T' ? <span className="text-neon-t">PLAYER T</span> :
+                     <span className="text-neon-k">PLAYER K</span>}
                 </h2>
                 <h3 className="text-3xl text-neon-green mb-6 font-bold tracking-widest">VICTORY</h3>
                 <div className="flex justify-center gap-4">
-                    <button onClick={resetGame} className="px-8 py-3 bg-neon-green text-black font-bold text-xl rounded hover:bg-white transition-colors hover:scale-105 transform duration-100">
+                    <button onClick={() => resetGame()} className="px-8 py-3 bg-neon-green text-black font-bold text-xl rounded hover:bg-white transition-colors hover:scale-105 transform duration-100">
                         PLAY AGAIN
                     </button>
                 </div>
@@ -660,7 +684,7 @@ const App: React.FC = () => {
                                 <li><strong>PvAI:</strong> X (Human) vs O (Bot)</li>
                                 <li><strong>2P:</strong> X vs O (Hotseat)</li>
                                 <li><strong>3P:</strong> X vs O vs Z</li>
-                                <li><strong>4P:</strong> X vs O vs Z vs A</li>
+                                <li><strong>4P - 8P:</strong> Multi-player Mayhem!</li>
                             </ul>
                         </p>
                      </div>

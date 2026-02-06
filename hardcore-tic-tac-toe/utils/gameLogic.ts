@@ -39,12 +39,16 @@ export const checkWin = (grid: Grid): { winner: Player | null, winningCells: Coo
     for (let c = 0; c < cols; c++) {
       const cell = grid[r][c];
       
-      // Check if the piece is a Player Piece (X, O, Z, A)
+      // Check if the piece is a Player Piece
       if (
           cell.type === PieceType.X || 
           cell.type === PieceType.O || 
           cell.type === PieceType.Z || 
-          cell.type === PieceType.A
+          cell.type === PieceType.A ||
+          cell.type === PieceType.M ||
+          cell.type === PieceType.S ||
+          cell.type === PieceType.T ||
+          cell.type === PieceType.K
       ) {
         const player = cell.type as Player;
 
@@ -110,10 +114,16 @@ export const getAIMove = (grid: Grid, player: Player, availableMoves: typeof imp
       
       // Map Player to PieceType
       let pType = PieceType.EMPTY;
-      if (who === 'X') pType = PieceType.X;
-      if (who === 'O') pType = PieceType.O;
-      if (who === 'Z') pType = PieceType.Z;
-      if (who === 'A') pType = PieceType.A;
+      switch(who) {
+        case 'X': pType = PieceType.X; break;
+        case 'O': pType = PieceType.O; break;
+        case 'Z': pType = PieceType.Z; break;
+        case 'A': pType = PieceType.A; break;
+        case 'M': pType = PieceType.M; break;
+        case 'S': pType = PieceType.S; break;
+        case 'T': pType = PieceType.T; break;
+        case 'K': pType = PieceType.K; break;
+      }
 
       cell.type = pType; // Direct mutation for check
       const result = checkWin(grid).winner === who;

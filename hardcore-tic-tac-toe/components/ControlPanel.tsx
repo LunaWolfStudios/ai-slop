@@ -33,8 +33,12 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
       switch(p) {
           case 'X': return 'text-neon-blue';
           case 'O': return 'text-neon-pink';
-          case 'Z': return 'text-neon-orange'; // Swapped to Orange
-          case 'A': return 'text-neon-purple'; // Swapped to Purple
+          case 'Z': return 'text-neon-orange';
+          case 'A': return 'text-neon-purple';
+          case 'M': return 'text-neon-m';
+          case 'S': return 'text-neon-s';
+          case 'T': return 'text-neon-t';
+          case 'K': return 'text-neon-k';
           default: return 'text-white';
       }
   };

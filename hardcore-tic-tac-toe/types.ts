@@ -1,4 +1,5 @@
-export type Player = 'X' | 'O' | 'Z' | 'A';
+
+export type Player = 'X' | 'O' | 'Z' | 'A' | 'M' | 'S' | 'T' | 'K';
 
 export enum PieceType {
   EMPTY = 'EMPTY',
@@ -6,6 +7,10 @@ export enum PieceType {
   O = 'O',
   Z = 'Z',
   A = 'A',
+  M = 'M',
+  S = 'S',
+  T = 'T',
+  K = 'K',
   TRIANGLE = 'TRIANGLE', // Permanent blocker
   RECTANGLE = 'RECTANGLE', // Destructible blocker
 }

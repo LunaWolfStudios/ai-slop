@@ -27,6 +27,10 @@ const GameInfo: React.FC<GameInfoProps> = ({ turnCount, sessionWins, history, cu
       case 'O': return 'text-neon-pink';
       case 'Z': return 'text-neon-orange';
       case 'A': return 'text-neon-purple';
+      case 'M': return 'text-neon-m';
+      case 'S': return 'text-neon-s';
+      case 'T': return 'text-neon-t';
+      case 'K': return 'text-neon-k';
       default: return 'text-white';
     }
   };
@@ -51,23 +55,16 @@ const GameInfo: React.FC<GameInfoProps> = ({ turnCount, sessionWins, history, cu
          
          {!isStatsCollapsed && (
             <div className="p-3">
-                <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-sm">
-                    <div className="flex items-center gap-1">
-                    <span className="text-neon-blue font-bold w-4">X:</span>
-                    <span className="text-white">{sessionWins.X}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                    <span className="text-neon-pink font-bold w-4">O:</span>
-                    <span className="text-white">{sessionWins.O}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                    <span className="text-neon-orange font-bold w-4">Z:</span>
-                    <span className="text-white">{sessionWins.Z}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                    <span className="text-neon-purple font-bold w-4">A:</span>
-                    <span className="text-white">{sessionWins.A}</span>
-                    </div>
+                <div className="grid grid-cols-4 gap-x-2 gap-y-1 text-sm">
+                    <div className="flex items-center gap-1"><span className="text-neon-blue font-bold">X:</span>{sessionWins.X}</div>
+                    <div className="flex items-center gap-1"><span className="text-neon-pink font-bold">O:</span>{sessionWins.O}</div>
+                    <div className="flex items-center gap-1"><span className="text-neon-orange font-bold">Z:</span>{sessionWins.Z}</div>
+                    <div className="flex items-center gap-1"><span className="text-neon-purple font-bold">A:</span>{sessionWins.A}</div>
+                    
+                    <div className="flex items-center gap-1"><span className="text-neon-m font-bold">M:</span>{sessionWins.M}</div>
+                    <div className="flex items-center gap-1"><span className="text-neon-s font-bold">S:</span>{sessionWins.S}</div>
+                    <div className="flex items-center gap-1"><span className="text-neon-t font-bold">T:</span>{sessionWins.T}</div>
+                    <div className="flex items-center gap-1"><span className="text-neon-k font-bold">K:</span>{sessionWins.K}</div>
                 </div>
             </div>
          )}
@@ -91,12 +88,7 @@ const GameInfo: React.FC<GameInfoProps> = ({ turnCount, sessionWins, history, cu
                 {history.map((entry, idx) => (
                     <div key={idx} className="flex gap-2 text-xs">
                         <span className="text-gray-500 font-mono w-4">{entry.turn}.</span>
-                        <span className={`font-bold
-                           ${entry.player === 'X' ? 'text-neon-blue' : ''}
-                           ${entry.player === 'O' ? 'text-neon-pink' : ''}
-                           ${entry.player === 'Z' ? 'text-neon-orange' : ''}
-                           ${entry.player === 'A' ? 'text-neon-purple' : ''}
-                        `}>
+                        <span className={`font-bold ${getPlayerColor(entry.player)}`}>
                             {entry.player}
                         </span>
                         <span className="text-gray-300 break-words flex-1 leading-tight">{entry.description}</span>
