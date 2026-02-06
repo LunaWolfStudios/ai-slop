@@ -371,7 +371,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="relative w-screen h-screen bg-gray-950 overflow-hidden flex flex-col font-sans">
+    <div className="relative w-screen h-[100dvh] bg-gray-950 overflow-hidden flex flex-col font-sans">
       
       {/* Header / HUD */}
       <header className="absolute top-0 left-0 w-full p-2 md:p-4 flex justify-between items-center z-40 pointer-events-none">

@@ -70,16 +70,16 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
     .map(([type]) => type as ActionType);
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-black/95 border-t border-neon-blue/30 p-2 pb-6 md:p-4 md:pb-8 backdrop-blur-md z-50 transition-all duration-300">
-      <div className="max-w-4xl mx-auto flex flex-col gap-2 md:gap-3">
+    <div className="relative w-full bg-black/95 border-t border-neon-blue/30 p-2 pb-4 md:p-4 backdrop-blur-md z-50 transition-all duration-300 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
+      <div className="max-w-6xl mx-auto flex flex-col gap-2 md:gap-3">
         
         {/* Status Bar / Sub Tools */}
         <div className="flex justify-between items-center min-h-[36px]">
             {isMidTurn ? (
                 <div className="flex items-center gap-2 md:gap-4 w-full justify-between animate-in fade-in slide-in-from-bottom-2 duration-300">
-                     {/* Horizontal list of remaining actions. Wraps on Desktop, Scrolls on Mobile if needed. */}
+                     {/* Horizontal list of remaining actions. Wraps ONLY on large screens (XL), scrolls on others to save height. */}
                      <div 
-                        className="flex items-center gap-2 overflow-x-auto md:overflow-visible md:flex-wrap w-full custom-scrollbar"
+                        className="flex items-center gap-2 overflow-x-auto xl:overflow-visible xl:flex-wrap w-full custom-scrollbar"
                      >
                         <span className="text-gray-400 text-xs md:text-sm font-mono whitespace-nowrap hidden sm:inline">REMAINING:</span>
                         {availableSubActions.map((type) => (
@@ -125,13 +125,13 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
         </div>
 
         {/* Main Actions List 
-            Mobile (Portrait): Single Scrollable Row (flex)
-            Desktop (Landscape): Grid
+            Default: Single Scrollable Row (flex)
+            Large Screens (XL+): Grid to see all at once
         */}
         <div 
             className={`
                 flex gap-2 overflow-x-auto pb-2 pt-1 w-full
-                md:grid md:grid-cols-8 md:overflow-visible md:pb-0
+                xl:grid xl:grid-cols-10 xl:overflow-visible xl:pb-0
                 transition-opacity duration-300
                 ${hasActed ? 'opacity-40 pointer-events-none' : 'opacity-100'}
             `}
