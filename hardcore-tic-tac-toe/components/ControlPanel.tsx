@@ -1,7 +1,7 @@
 import React from 'react';
 import { MOVES } from '../constants';
 import { ActionConfig, ActionType, Player } from '../types';
-import { Sword, Shield, Expand, MousePointer2, Hammer, Dot, Zap, SkipForward, XCircle } from 'lucide-react';
+import { Shield, Expand, MousePointer2, Hammer, Dot, Zap, SkipForward } from 'lucide-react';
 
 interface ControlPanelProps {
   currentPlayer: Player;
@@ -33,8 +33,8 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
       switch(p) {
           case 'X': return 'text-neon-blue';
           case 'O': return 'text-neon-pink';
-          case 'Z': return 'text-neon-purple';
-          case 'A': return 'text-neon-orange';
+          case 'Z': return 'text-neon-orange'; // Swapped to Orange
+          case 'A': return 'text-neon-purple'; // Swapped to Purple
           default: return 'text-white';
       }
   };

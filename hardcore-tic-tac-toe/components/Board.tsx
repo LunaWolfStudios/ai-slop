@@ -48,7 +48,7 @@ const Board: React.FC<BoardProps> = ({
             strokeWidth="2.5" 
             strokeLinecap="round" 
             strokeLinejoin="round" 
-            className="text-neon-purple drop-shadow-[0_0_8px_rgba(191,0,255,0.8)]"
+            className="text-neon-orange drop-shadow-[0_0_8px_rgba(255,85,0,0.8)]"
           >
             <path d="M4 4h16l-16 16h16" />
           </svg>
@@ -64,7 +64,7 @@ const Board: React.FC<BoardProps> = ({
             strokeWidth="2.5" 
             strokeLinecap="round" 
             strokeLinejoin="round" 
-            className="text-neon-orange drop-shadow-[0_0_8px_rgba(255,85,0,0.8)]"
+            className="text-neon-purple drop-shadow-[0_0_8px_rgba(191,0,255,0.8)]"
           >
             <path d="M3 21l9-18 9 18M5 13h14" />
           </svg>

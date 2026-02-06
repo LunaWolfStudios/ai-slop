@@ -40,11 +40,11 @@ const GameInfo: React.FC<GameInfoProps> = ({ turnCount, sessionWins, history, cu
                    <span className="text-white">{sessionWins.O}</span>
                 </div>
                 <div className="flex items-center gap-1">
-                   <span className="text-neon-purple font-bold w-4">Z:</span>
+                   <span className="text-neon-orange font-bold w-4">Z:</span>
                    <span className="text-white">{sessionWins.Z}</span>
                 </div>
                 <div className="flex items-center gap-1">
-                   <span className="text-neon-orange font-bold w-4">A:</span>
+                   <span className="text-neon-purple font-bold w-4">A:</span>
                    <span className="text-white">{sessionWins.A}</span>
                 </div>
             </div>
@@ -72,8 +72,8 @@ const GameInfo: React.FC<GameInfoProps> = ({ turnCount, sessionWins, history, cu
                         <span className={`font-bold
                            ${entry.player === 'X' ? 'text-neon-blue' : ''}
                            ${entry.player === 'O' ? 'text-neon-pink' : ''}
-                           ${entry.player === 'Z' ? 'text-neon-purple' : ''}
-                           ${entry.player === 'A' ? 'text-neon-orange' : ''}
+                           ${entry.player === 'Z' ? 'text-neon-orange' : ''}
+                           ${entry.player === 'A' ? 'text-neon-purple' : ''}
                         `}>
                             {entry.player}
                         </span>

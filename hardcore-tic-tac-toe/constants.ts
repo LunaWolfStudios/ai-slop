@@ -51,8 +51,8 @@ export const MOVES: ActionConfig[] = [
   },
   {
     id: 'destroy',
-    label: 'Destroy',
-    description: 'Deal 5 damage to Rectangles (Destroy 2.5).',
+    label: 'Crush',
+    description: 'Deal 5 damage to Rectangles (Crush 2.5).',
     cost: { [ActionType.DESTROY]: 5 } // 1 damage per click, 2 HP per rect = 2.5 rects
   },
   // Combos
@@ -80,7 +80,7 @@ export const MOVES: ActionConfig[] = [
   {
     id: 'combo-dest-dot',
     label: 'Combo: Crush + Dot',
-    description: 'Destroy 2 Rectangles + 1 Dot.',
+    description: 'Crush 2 Rectangles + 1 Dot.',
     cost: { [ActionType.DESTROY]: 4, [ActionType.PLACE_DOT]: 1 },
     combo: true
   }

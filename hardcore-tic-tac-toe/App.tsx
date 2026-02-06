@@ -86,19 +86,10 @@ const App: React.FC = () => {
   const handleUndo = () => {
       if (undoStackRef.current.length === 0) return;
       
-      // In PvAI, if it's currently AI's turn (which is instant), we can't really undo "into" it easily.
-      // But typically we are in Human turn. If we undo, we want to go back to Human's PREVIOUS turn.
-      // Or if we made a move but haven't ended turn, we undo to start of turn.
-      
       let stepsToPop = 1;
       
-      // Smart Undo for PvAI: 
-      // If we are X and we have NOT acted yet, hitting undo means we want to go back to before O played.
-      // So we pop 2 states (O's turn, then back to X's turn).
       if (gameMode === 'PvAI' && currentPlayer === 'X' && !hasActedInTurn) {
-         // Check if we have enough history to go back past AI
          if (undoStackRef.current.length >= 2) {
-             // Peek to ensure the previous state was indeed O's turn (it should be)
              stepsToPop = 2; 
          }
       }
@@ -124,17 +115,22 @@ const App: React.FC = () => {
       }
   };
 
+  const setDefaultAction = () => {
+      const tokenMove = MOVES.find(m => m.id === 'basic-token');
+      if (tokenMove) {
+          setCurrentConfigId(tokenMove.id);
+          setRemainingActions({ ...tokenMove.cost });
+          setCurrentActionType(ActionType.PLACE_TOKEN);
+      }
+  };
+
   const switchTurn = () => {
-    // Only save state if we haven't already saved it during the turn via actions
-    // Actually, saveState is called before actions. 
-    // switchTurn is the result of ending turn. We don't save state HERE, 
-    // because the next state (new player) is fresh.
-    
     setCurrentPlayer(prev => getNextPlayer(prev, gameMode));
     setTurnCount(prev => prev + 1);
-    setRemainingActions({});
-    setCurrentConfigId(null);
-    setCurrentActionType(null);
+    
+    // Default to Place Token for smooth gameplay
+    setDefaultAction();
+    
     setHasActedInTurn(false);
   };
 
@@ -154,19 +150,31 @@ const App: React.FC = () => {
       if (next[type] && next[type]! > 0) {
         next[type]!--;
       }
-      
-      if (next[type] === 0) {
-         const remainingTypes = Object.keys(next).filter(k => next[k as ActionType]! > 0) as ActionType[];
-         if (remainingTypes.length > 0) {
-             setCurrentActionType(remainingTypes[0]);
-         } else {
-             setTimeout(switchTurn, 200);
-         }
-      }
-
       return next;
     });
   };
+
+  // Monitor Action State for Auto-Switching or Turn End
+  useEffect(() => {
+    if (winner) return;
+
+    if (hasActedInTurn) {
+        const hasRemaining = Object.values(remainingActions).some(count => count && count > 0);
+        
+        if (!hasRemaining) {
+            // No actions left, end turn after delay
+            const timer = setTimeout(switchTurn, 200);
+            return () => clearTimeout(timer);
+        } else {
+            // Actions left, check if we need to switch active sub-tool
+            if (currentActionType && (!remainingActions[currentActionType] || remainingActions[currentActionType] === 0)) {
+                const nextTool = Object.keys(remainingActions).find(k => remainingActions[k as ActionType]! > 0) as ActionType;
+                if (nextTool) setCurrentActionType(nextTool);
+            }
+        }
+    }
+  }, [remainingActions, hasActedInTurn, winner]);
+
 
   const triggerErrorFlash = (r: number, c: number) => {
     setGrid(prev => {
@@ -225,16 +233,13 @@ const App: React.FC = () => {
 
   useEffect(() => {
       setTimeout(fitToScreen, 100);
+      setDefaultAction(); // Initial game start default
   }, []);
 
   // --- Interaction Handlers ---
 
   const handleSelectAction = (config: ActionConfig) => {
     if (hasActedInTurn) return; 
-
-    // Save State before starting a configuration (first time in turn)
-    // Wait, users can change config if they haven't acted. 
-    // We only need to save state when they *commit* an action.
     
     setCurrentConfigId(config.id);
     setRemainingActions({ ...config.cost });
@@ -249,7 +254,7 @@ const App: React.FC = () => {
   };
 
   const handleEndTurn = () => {
-      saveStateForUndo(); // Save state before passing (so we can undo the pass)
+      saveStateForUndo(); 
       if (!hasActedInTurn) {
           logAction("Passed Turn");
       }
@@ -258,7 +263,11 @@ const App: React.FC = () => {
 
   const handleCellClick = (r: number, c: number) => {
     if (winner || !currentActionType) return;
+    if (gameMode === 'PvAI' && currentPlayer === 'O') return; 
     
+    // VALIDATION: Prevent rapid clicking if action is already consumed
+    if (!remainingActions[currentActionType] || remainingActions[currentActionType]! <= 0) return;
+
     const cell = grid[r][c];
     let actionSuccess = false;
     let error = false;
@@ -319,7 +328,7 @@ const App: React.FC = () => {
             if (newGrid[r][c].health <= 0) {
                 newGrid[r][c].type = PieceType.EMPTY;
                 newGrid[r][c].health = 0;
-                logMsg = `Destroyed Rect at (${r+1},${c+1})`;
+                logMsg = `Crushed Rect at (${r+1},${c+1})`;
             } else {
                 logMsg = `Damaged Rect at (${r+1},${c+1})`;
             }
@@ -334,7 +343,7 @@ const App: React.FC = () => {
     if (error) return; 
 
     if (actionSuccess) {
-        saveStateForUndo(); // Push current state to stack before modifying
+        saveStateForUndo(); 
         setGrid(newGrid);
         logAction(logMsg);
         
@@ -355,6 +364,10 @@ const App: React.FC = () => {
 
   const handleLineClick = (index: number, isRow: boolean) => {
       if (winner || currentActionType !== ActionType.DRAW_LINE) return;
+      if (gameMode === 'PvAI' && currentPlayer === 'O') return;
+
+      // VALIDATION
+      if (!remainingActions[ActionType.DRAW_LINE] || remainingActions[ActionType.DRAW_LINE]! <= 0) return;
 
       saveStateForUndo();
       const newGrid = expandGrid(grid, index, isRow);
@@ -456,6 +469,7 @@ const App: React.FC = () => {
     setHistory([]);
     undoStackRef.current = [];
     fitToScreen(); 
+    setDefaultAction();
   };
 
   const toggleGameMode = () => {
@@ -573,8 +587,8 @@ const App: React.FC = () => {
                 <h2 className="text-5xl font-black mb-2 text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">
                     {winner === 'X' ? <span className="text-neon-blue">PLAYER X</span> : 
                      winner === 'O' ? <span className="text-neon-pink">PLAYER O</span> :
-                     winner === 'Z' ? <span className="text-neon-purple">PLAYER Z</span> :
-                     <span className="text-neon-orange">PLAYER A</span>}
+                     winner === 'Z' ? <span className="text-neon-orange">PLAYER Z</span> :
+                     <span className="text-neon-purple">PLAYER A</span>}
                 </h2>
                 <h3 className="text-3xl text-neon-green mb-6 font-bold tracking-widest">VICTORY</h3>
                 <div className="flex justify-center gap-4">
@@ -591,7 +605,7 @@ const App: React.FC = () => {
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
              <div className="max-w-2xl bg-gray-900 border border-gray-700 rounded-lg p-6 text-gray-300 shadow-2xl">
                  <h2 className="text-2xl font-bold text-white mb-4 border-b border-gray-700 pb-2">How to Play</h2>
-                 <div className="space-y-4 mb-6 h-96 overflow-y-auto pr-2">
+                 <div className="space-y-4 mb-6 h-96 overflow-y-auto pr-2 custom-scrollbar">
                      <p><strong>Objective:</strong> Get 3 Win Tokens in a row.</p>
                      
                      <div className="p-3 bg-gray-800 rounded">
@@ -608,7 +622,19 @@ const App: React.FC = () => {
 
                      <div className="p-3 bg-gray-800 rounded">
                         <h4 className="text-neon-yellow font-bold">Blocking & Expansion</h4>
-                        <p className="text-sm">Use the Expand tool to add rows/cols. Place Triangles or Rectangles to block paths.</p>
+                        <p className="text-sm mb-2">Use the Expand tool to add rows/cols. Place blockers to stop opponents:</p>
+                        <ul className="list-disc pl-4 text-xs space-y-1">
+                            <li><strong className="text-neon-yellow">Triangles:</strong> Permanent blocks. Cannot be destroyed.</li>
+                            <li><strong className="text-neon-green">Rectangles:</strong> Destructible blocks. Have 2 HP.</li>
+                        </ul>
+                     </div>
+
+                     <div className="p-3 bg-gray-800 rounded">
+                        <h4 className="text-red-400 font-bold">Crush & Defense</h4>
+                         <ul className="list-disc pl-4 text-xs space-y-1 mt-1">
+                            <li><strong className="text-red-400">Crush Tool:</strong> Deals 1 damage per click. You get 5 clicks. It takes 2 hits to destroy a Rectangle.</li>
+                            <li><strong className="text-indigo-400">Dots:</strong> Place on empty cells to protect them. Cells with Dots CANNOT have blockers placed on them, but can accept Win Tokens.</li>
+                        </ul>
                      </div>
 
                      <div className="p-3 bg-gray-800 rounded border border-gray-600">
