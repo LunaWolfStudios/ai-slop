@@ -516,10 +516,10 @@ const App: React.FC = () => {
       
       {/* Turn Notification Popup */}
       {turnNotification && !winner && (
-        <div key={turnNotification.text} className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+        <div key={turnNotification.text} className="fixed inset-x-0 top-[60%] z-50 flex justify-center pointer-events-none">
             <div className={`
-                text-5xl md:text-8xl font-black tracking-tighter italic border-4 p-8 rounded-xl bg-black/80 backdrop-blur-sm
-                animate-popup
+                text-3xl md:text-6xl font-black tracking-tighter italic border-2 md:border-4 p-4 md:p-6 rounded-xl bg-black/80 backdrop-blur-sm
+                animate-popup shadow-[0_0_30px_rgba(0,0,0,0.5)]
                 ${getNotificationColor(turnNotification.player)}
             `}>
                 {turnNotification.text}
