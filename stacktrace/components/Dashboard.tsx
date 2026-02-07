@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { ComputedState, CountingSystem } from '../types';
-import { Activity, Layers, Disc } from 'lucide-react';
+import { Activity, Layers, Disc, ChevronDown, ChevronUp, LineChart } from 'lucide-react';
 
 interface DashboardProps {
   stats: ComputedState;
@@ -9,6 +9,7 @@ interface DashboardProps {
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ stats, system }) => {
+  const [isGraphOpen, setIsGraphOpen] = useState(true);
   const isPositive = stats.trueCount >= 1;
   const isNegative = stats.trueCount <= -1;
 
@@ -86,38 +87,52 @@ export const Dashboard: React.FC<DashboardProps> = ({ stats, system }) => {
         </div>
       </div>
 
-      {/* Charts */}
-      <div className="h-64 w-full bg-casino-800/40 border border-casino-700 rounded-xl p-4 backdrop-blur-sm">
-         <h4 className="text-xs text-slate-400 uppercase tracking-wider mb-4 font-semibold">True Count History</h4>
-         <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={stats.historyPoints}>
-              <defs>
-                <linearGradient id="colorTc" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor="#06b6d4" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <XAxis dataKey="time" hide />
-              <YAxis domain={['auto', 'auto']} tick={{fill: '#64748b', fontSize: 10}} tickFormatter={(val) => val.toFixed(1)} />
-              <Tooltip 
-                contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#f1f5f9' }}
-                itemStyle={{ color: '#06b6d4' }}
-                labelStyle={{ display: 'none' }}
-                formatter={(val: number) => [val, 'True Count']}
-              />
-              <ReferenceLine y={0} stroke="#475569" strokeDasharray="3 3" />
-              <ReferenceLine y={2} stroke="#10b981" strokeDasharray="3 3" strokeOpacity={0.5} label={{ value: 'Bet', fill: '#10b981', fontSize: 10, position: 'right' }} />
-              <Area 
-                type="monotone" 
-                dataKey="tc" 
-                stroke="#06b6d4" 
-                strokeWidth={2}
-                fillOpacity={1} 
-                fill="url(#colorTc)" 
-                isAnimationActive={false}
-              />
-            </AreaChart>
-         </ResponsiveContainer>
+      {/* Collapsible Charts */}
+      <div className="bg-casino-800/40 border border-casino-700 rounded-xl overflow-hidden backdrop-blur-sm transition-all duration-300">
+         <button 
+            onClick={() => setIsGraphOpen(!isGraphOpen)}
+            className="w-full flex items-center justify-between p-4 hover:bg-casino-700/30 transition-colors"
+         >
+             <div className="flex items-center gap-2">
+                <LineChart size={16} className="text-cyan-500" />
+                <h4 className="text-sm font-semibold text-slate-300 uppercase tracking-wider">True Count History</h4>
+             </div>
+             {isGraphOpen ? <ChevronUp size={16} className="text-slate-500" /> : <ChevronDown size={16} className="text-slate-500" />}
+         </button>
+         
+         {isGraphOpen && (
+             <div className="h-64 w-full p-4 pt-0">
+                <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={stats.historyPoints}>
+                    <defs>
+                        <linearGradient id="colorTc" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#06b6d4" stopOpacity={0}/>
+                        </linearGradient>
+                    </defs>
+                    <XAxis dataKey="time" hide />
+                    <YAxis domain={['auto', 'auto']} tick={{fill: '#64748b', fontSize: 10}} tickFormatter={(val) => val.toFixed(1)} />
+                    <Tooltip 
+                        contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#f1f5f9' }}
+                        itemStyle={{ color: '#06b6d4' }}
+                        labelStyle={{ display: 'none' }}
+                        formatter={(val: number) => [val, 'True Count']}
+                    />
+                    <ReferenceLine y={0} stroke="#475569" strokeDasharray="3 3" />
+                    <ReferenceLine y={2} stroke="#10b981" strokeDasharray="3 3" strokeOpacity={0.5} label={{ value: 'Bet', fill: '#10b981', fontSize: 10, position: 'right' }} />
+                    <Area 
+                        type="monotone" 
+                        dataKey="tc" 
+                        stroke="#06b6d4" 
+                        strokeWidth={2}
+                        fillOpacity={1} 
+                        fill="url(#colorTc)" 
+                        isAnimationActive={false}
+                    />
+                    </AreaChart>
+                </ResponsiveContainer>
+             </div>
+         )}
       </div>
     </div>
   );

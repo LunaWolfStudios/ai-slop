@@ -47,7 +47,9 @@ const App: React.FC = () => {
   }, []);
 
   const handleReset = useCallback(() => {
-    if (window.confirm('Are you sure you want to clear the current session? This cannot be undone.')) {
+    // Explicitly use window.confirm and ensure data clearing logic
+    const confirmed = window.confirm('Reset Session? All progress and history will be cleared.');
+    if (confirmed) {
       setHistory([]);
     }
   }, []);
@@ -155,56 +157,57 @@ const App: React.FC = () => {
         )}
       </nav>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        {/* Left Column: Stats & Viz */}
-        <div className="lg:col-span-8 space-y-6">
-            <Dashboard stats={computed} system={currentSystem} />
+      <main className="max-w-7xl mx-auto px-4 py-6">
+        {/* Main Grid: items-start to prevent height stretching of collapsed columns */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             
-            {/* Card Input Area - Sticky on Desktop, Static on Mobile (or adjust based on preference) */}
-            <div className="mt-8">
-                <div className="flex items-center justify-between mb-3 px-1">
-                    <div className="flex items-center gap-4">
-                        <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Input Stream</h2>
-                        <button 
-                            onClick={() => handleUndo(lastEventId)}
-                            disabled={!lastEventId}
-                            className="flex items-center gap-1.5 px-3 py-1 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                        >
-                            <RotateCcw size={12} />
-                            <span>Undo</span>
-                        </button>
-                    </div>
-                    <span className="text-xs text-cyan-500/80 font-mono bg-cyan-950/30 px-2 py-0.5 rounded border border-cyan-900/50">
-                        {currentSystem.name} Active
-                    </span>
-                </div>
-                <CardInputGrid onCardInput={handleCardInput} />
+            {/* Left Column: Stats & Viz */}
+            <div className="lg:col-span-8 space-y-6">
+                <Dashboard stats={computed} system={currentSystem} />
                 
-                <CardInventory composition={computed.composition} cardsRemaining={cardsRemaining} />
-            </div>
-
-            {/* Disclaimer */}
-            <div className="mt-8 p-4 rounded-lg bg-yellow-900/10 border border-yellow-700/20 flex items-start gap-3">
-                <AlertTriangle className="text-yellow-600 shrink-0 mt-0.5" size={18} />
-                <div className="text-xs text-yellow-600/80 leading-relaxed">
-                    <strong>Educational Use Only.</strong> This tool is for mathematical research and statistical analysis. 
-                    The use of electronic devices to count cards in casinos is illegal in many jurisdictions. 
-                    The developers assume no responsibility for misuse.
+                {/* Card Input Area */}
+                <div className="mt-8">
+                    <div className="flex items-center justify-between mb-3 px-1">
+                        <div className="flex items-center gap-4">
+                            <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Input Stream</h2>
+                            <button 
+                                onClick={() => handleUndo(lastEventId)}
+                                disabled={!lastEventId}
+                                className="flex items-center gap-1.5 px-3 py-1 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                            >
+                                <RotateCcw size={12} />
+                                <span>Undo</span>
+                            </button>
+                        </div>
+                        <span className="text-xs text-cyan-500/80 font-mono bg-cyan-950/30 px-2 py-0.5 rounded border border-cyan-900/50">
+                            {currentSystem.name} Active
+                        </span>
+                    </div>
+                    <CardInputGrid onCardInput={handleCardInput} />
+                    
+                    <CardInventory composition={computed.composition} cardsRemaining={cardsRemaining} />
                 </div>
             </div>
+
+            {/* Right Column: History Log - Sticky on desktop */}
+            <div className="lg:col-span-4 lg:sticky lg:top-24">
+                <HistoryLog 
+                    history={history} 
+                    system={currentSystem} 
+                    onUndo={handleUndo} 
+                />
+            </div>
         </div>
 
-        {/* Right Column: History Log */}
-        <div className="lg:col-span-4 lg:h-auto">
-            <HistoryLog 
-                history={history} 
-                system={currentSystem} 
-                onUndo={handleUndo} 
-            />
+        {/* Disclaimer Row - At the very bottom */}
+        <div className="mt-12 p-4 rounded-lg bg-yellow-900/10 border border-yellow-700/20 flex items-start gap-3">
+            <AlertTriangle className="text-yellow-600 shrink-0 mt-0.5" size={18} />
+            <div className="text-xs text-yellow-600/80 leading-relaxed">
+                <strong>Educational Use Only.</strong> This tool is for mathematical research and statistical analysis. 
+                The use of electronic devices to count cards in casinos is illegal in many jurisdictions. 
+                The developers assume no responsibility for misuse.
+            </div>
         </div>
-
       </main>
     </div>
   );

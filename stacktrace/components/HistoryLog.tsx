@@ -19,7 +19,7 @@ export const HistoryLog: React.FC<HistoryLogProps> = ({ history, system, onUndo 
   }, [history, isOpen]);
 
   return (
-    <div className="flex flex-col h-full rounded-xl overflow-hidden bg-casino-800/20 border border-casino-700/50 backdrop-blur-sm transition-all duration-300">
+    <div className="flex flex-col h-fit rounded-xl overflow-hidden bg-casino-800/20 border border-casino-700/50 backdrop-blur-sm transition-all duration-300 w-full">
         <button 
             onClick={() => setIsOpen(!isOpen)}
             className="flex items-center justify-between p-4 bg-casino-800/50 hover:bg-casino-700/50 transition-colors w-full"
@@ -32,7 +32,7 @@ export const HistoryLog: React.FC<HistoryLogProps> = ({ history, system, onUndo 
         </button>
 
         {isOpen && (
-            <div className="flex-1 min-h-[300px] lg:min-h-0 overflow-hidden flex flex-col p-4 pt-0">
+            <div className="flex-1 min-h-[300px] lg:min-h-0 lg:max-h-[calc(100vh-14rem)] overflow-hidden flex flex-col p-4 pt-0">
                 {history.length === 0 ? (
                     <div className="flex-1 flex items-center justify-center text-slate-600 text-sm italic py-8">
                         No cards logged yet.
