@@ -31,9 +31,18 @@ export const CardInventory: React.FC<CardInventoryProps> = ({ composition, cards
                 const count = composition[rank];
                 const percentage = cardsRemaining > 0 ? (count / cardsRemaining) * 100 : 0;
                 
+                const isHigh = ['10','J','Q','K','A'].includes(rank);
+                const isNeutral = ['7', '8', '9'].includes(rank);
+                
+                const textColor = isHigh 
+                    ? 'text-purple-400' 
+                    : isNeutral 
+                        ? 'text-blue-400' 
+                        : 'text-emerald-400';
+                
                 return (
                     <div key={rank} className="flex flex-col items-center p-2 rounded bg-casino-900/40 border border-white/5">
-                        <span className={`text-sm font-mono font-bold mb-1 ${['10','J','Q','K','A'].includes(rank) ? 'text-indigo-400' : 'text-emerald-400'}`}>
+                        <span className={`text-sm font-mono font-bold mb-1 ${textColor}`}>
                             {rank}
                         </span>
                         <span className="text-sm text-white font-medium">{count}</span>

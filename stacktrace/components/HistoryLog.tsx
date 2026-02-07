@@ -41,19 +41,28 @@ export const HistoryLog: React.FC<HistoryLogProps> = ({ history, system, onUndo 
                     <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-1 pr-1 custom-scrollbar max-h-[400px] lg:max-h-none">
                     {history.map((event, index) => {
                         const val = system.weights[event.rank];
-                        const isNeutral = val === 0;
-                        const isPositive = val > 0;
+                        const isSystemNeutral = val === 0;
+                        const isSystemPositive = val > 0;
                         
+                        // Visual grouping colors (Rank based)
+                        const isHighRank = ['10','J','Q','K','A'].includes(event.rank);
+                        const isNeutralRank = ['7', '8', '9'].includes(event.rank);
+                        const rankColor = isHighRank 
+                            ? 'text-purple-400' 
+                            : isNeutralRank 
+                                ? 'text-blue-400' 
+                                : 'text-emerald-400';
+
                         return (
                         <div key={event.id} className="group flex items-center justify-between p-2 rounded-md bg-casino-800/30 border border-transparent hover:border-casino-700 hover:bg-casino-800/80 transition-all text-sm">
                             <div className="flex items-center gap-3">
                                 <span className="text-xs text-slate-500 font-mono">
                                     {new Date(event.timestamp).toLocaleTimeString([], {minute:'2-digit', second:'2-digit'})}
                                 </span>
-                                <span className={`font-bold font-mono w-6 text-center ${['10','J','Q','K','A'].includes(event.rank) ? 'text-indigo-400' : 'text-emerald-400'}`}>
+                                <span className={`font-bold font-mono w-6 text-center ${rankColor}`}>
                                     {event.rank}
                                 </span>
-                                <span className={`text-xs font-mono ${isNeutral ? 'text-slate-500' : isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                <span className={`text-xs font-mono ${isSystemNeutral ? 'text-slate-500' : isSystemPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
                                     {val > 0 ? '+' : ''}{val}
                                 </span>
                             </div>
