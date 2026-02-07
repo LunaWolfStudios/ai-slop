@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid'; // User would typically need this pkg, but standard in this env
-import { Settings, RefreshCw, AlertTriangle, ShieldCheck, RotateCcw } from 'lucide-react';
+import { Settings, AlertTriangle, ShieldCheck, RotateCcw } from 'lucide-react';
 import { AppSettings, CardEvent, CardRank } from './types';
 import { SYSTEMS, DEFAULT_SYSTEM, INITIAL_DECK_COUNT } from './constants';
 import { computeGameState } from './services/analytics';
@@ -46,14 +46,6 @@ const App: React.FC = () => {
     });
   }, []);
 
-  const handleReset = useCallback(() => {
-    // Explicitly use window.confirm and ensure data clearing logic
-    const confirmed = window.confirm('Reset Session? All progress and history will be cleared.');
-    if (confirmed) {
-      setHistory([]);
-    }
-  }, []);
-
   const changeSystem = (id: string) => {
     setSettings(prev => ({ ...prev, systemId: id }));
   };
@@ -96,13 +88,6 @@ const App: React.FC = () => {
                <ShieldCheck size={14} />
                <span>Research Mode</span>
             </div>
-            <button 
-                onClick={handleReset}
-                className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors"
-                title="Reset Session"
-            >
-                <RefreshCw size={20} />
-            </button>
             <button 
                 onClick={() => setShowSettings(!showSettings)}
                 className={`p-2 rounded-lg transition-colors ${showSettings ? 'text-cyan-400 bg-cyan-900/20' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}

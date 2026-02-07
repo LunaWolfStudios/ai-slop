@@ -62,13 +62,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ stats, system }) => {
             <span className="text-xs font-medium uppercase">Decks Left</span>
           </div>
           <div className="text-2xl font-mono text-slate-200 font-semibold">
-            {stats.decksRemaining.toFixed(2)}
+            {stats.decksRemaining.toFixed(3)}
           </div>
           <div className="mt-2 w-full bg-casino-900 rounded-full h-1.5 overflow-hidden">
             {/* Visual bar of deck penetration */}
             <div 
               className="h-full bg-cyan-500 transition-all duration-500" 
-              style={{ width: `${Math.min(100, (stats.decksRemaining / (stats.cardsSeen/52 + stats.decksRemaining)) * 100)}%` }} 
+              style={{ width: `${Math.min(100, stats.penetration)}%` }} 
             />
           </div>
         </div>
@@ -82,7 +82,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ stats, system }) => {
             {stats.cardsSeen}
           </div>
           <div className="text-xs text-slate-500 mt-1">
-            Penetration: {((stats.cardsSeen / ((stats.cardsSeen + (stats.decksRemaining * 52)) || 1)) * 100).toFixed(0)}%
+            Penetration: {stats.penetration.toFixed(1)}%
           </div>
         </div>
       </div>

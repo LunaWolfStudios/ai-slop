@@ -15,7 +15,8 @@ export const computeGameState = (history: CardEvent[], settings: AppSettings): C
   const historyPoints = [];
 
   // Replay history
-  for (const event of history) {
+  for (let i = 0; i < history.length; i++) {
+    const event = history[i];
     // Update RC
     runningCount += system.weights[event.rank];
     
@@ -24,11 +25,9 @@ export const computeGameState = (history: CardEvent[], settings: AppSettings): C
       composition[event.rank] -= 1;
     }
 
-    // Capture point for graph (simplified: only capture occasional points or all if small)
-    // For performance on large sets, we might throttle, but for <1000 cards, all is fine.
-    // We calculate "instant" TC for the graph
-    const cardsSeenSoFar = history.indexOf(event) + 1;
-    const decksRem = Math.max(0.5, (totalCardsInShoe - cardsSeenSoFar) / 52); // Avoid div by zero, clamp to 0.5 decks min
+    const cardsSeenSoFar = i + 1;
+    // Use high precision for graph history too, clamp to 0.01 decks (approx half a card) to avoid infinity
+    const decksRem = Math.max(0.01, (totalCardsInShoe - cardsSeenSoFar) / 52);
     const tc = runningCount / decksRem;
 
     historyPoints.push({
@@ -40,22 +39,24 @@ export const computeGameState = (history: CardEvent[], settings: AppSettings): C
 
   const cardsSeen = history.length;
   const cardsRemaining = totalCardsInShoe - cardsSeen;
-  const decksRemaining = Math.max(0.1, cardsRemaining / 52); // Clamp to avoid infinity
+  
+  // High precision decks remaining.
+  // 1 card is ~0.019 decks. We clamp at 0.001 to prevent division by zero while maintaining accuracy for even the last card.
+  const decksRemaining = Math.max(0.001, cardsRemaining / 52);
   
   const trueCount = runningCount / decksRemaining;
 
-  // Approximate Advantage: TC * 0.5% - House Edge (approx 0.5%)
-  // This is a rough heuristic. We'll use just TC * 0.5% as "Player Deviation Advantage" for simplicity
-  // or the standard deviation: (TC - 1) * 0.5% ?? 
-  // Standard rule of thumb: ~0.5% advantage per TC unit above 1.
-  // We'll stick to a simple scaler for visualization: TC * 0.5%.
+  // Approximate Advantage: TC * 0.5%
   const advantage = trueCount * 0.5;
+
+  const penetration = totalCardsInShoe > 0 ? (cardsSeen / totalCardsInShoe) * 100 : 0;
 
   return {
     runningCount: parseFloat(runningCount.toFixed(1)), // Handle .5 float issues
     trueCount: parseFloat(trueCount.toFixed(2)),
     cardsSeen,
-    decksRemaining: parseFloat(decksRemaining.toFixed(2)),
+    decksRemaining: parseFloat(decksRemaining.toFixed(3)), // 3 decimals for high accuracy
+    penetration: parseFloat(penetration.toFixed(1)),
     advantage: parseFloat(advantage.toFixed(2)),
     historyPoints,
     composition

@@ -18,6 +18,7 @@ export interface ComputedState {
   trueCount: number;
   cardsSeen: number;
   decksRemaining: number;
+  penetration: number;
   advantage: number;
   historyPoints: {
     time: string;
