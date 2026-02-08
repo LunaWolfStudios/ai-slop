@@ -35,7 +35,7 @@ export const SYSTEMS: Record<string, CountingSystem> = {
   }
 };
 
-export const INITIAL_DECK_COUNT = 6;
+export const INITIAL_DECK_COUNT = 8;
 export const DEFAULT_SYSTEM = 'hilo';
 
 // Used for composition analysis
