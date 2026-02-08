@@ -18,7 +18,7 @@ const App: React.FC = () => {
   const [settings, setSettings] = useState<AppSettings>({
     decks: INITIAL_DECK_COUNT,
     systemId: DEFAULT_SYSTEM,
-    inputMode: 'detailed'
+    inputMode: 'simple'
   });
   const [showSettings, setShowSettings] = useState(false);
 
