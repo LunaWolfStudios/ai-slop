@@ -12,15 +12,38 @@ import { CardInventory } from './components/CardInventory';
 // Helper for UUID since we can't rely on external heavy libs for this simple task if not present
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
+const STORAGE_KEY = 'stacktrace_settings_v1';
+
 const App: React.FC = () => {
   // State
   const [history, setHistory] = useState<CardEvent[]>([]);
-  const [settings, setSettings] = useState<AppSettings>({
-    decks: INITIAL_DECK_COUNT,
-    systemId: DEFAULT_SYSTEM,
-    inputMode: 'detailed'
+  
+  // Initialize settings from localStorage or defaults
+  const [settings, setSettings] = useState<AppSettings>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          return JSON.parse(saved);
+        }
+      } catch (e) {
+        console.warn('Failed to parse settings from local storage');
+      }
+    }
+    // Default fallback
+    return {
+      decks: INITIAL_DECK_COUNT,
+      systemId: DEFAULT_SYSTEM,
+      inputMode: 'detailed'
+    };
   });
+
   const [showSettings, setShowSettings] = useState(false);
+
+  // Persist settings whenever they change
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  }, [settings]);
 
   // Computed State
   const computed = useMemo(() => computeGameState(history, settings), [history, settings]);
