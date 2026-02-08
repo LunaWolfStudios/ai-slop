@@ -113,7 +113,7 @@ const App: React.FC = () => {
                                         : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:border-slate-600'}`}
                                 >
                                     <div className="font-bold text-sm">{s.name}</div>
-                                    <div className="text-[10px] opacity-70 mt-1 line-clamp-2">{s.description}</div>
+                                    <div className="text-[10px] opacity-70 mt-1">{s.description}</div>
                                 </button>
                             ))}
                         </div>
