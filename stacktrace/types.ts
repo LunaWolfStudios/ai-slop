@@ -11,6 +11,7 @@ export interface CardEvent {
   id: string;
   rank: CardRank;
   timestamp: number;
+  inputLabel?: string; // Optional label for when using Simple Mode
 }
 
 export interface ComputedState {
@@ -31,4 +32,5 @@ export interface ComputedState {
 export interface AppSettings {
   decks: number;
   systemId: string;
+  inputMode: 'detailed' | 'simple';
 }

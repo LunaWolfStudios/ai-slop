@@ -12,11 +12,7 @@ export const HistoryLog: React.FC<HistoryLogProps> = ({ history, system, onUndo 
   const [isOpen, setIsOpen] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (isOpen && scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [history, isOpen]);
+  // No longer auto-scrolling to bottom since we reversed order to show newest at top
 
   return (
     <div className="flex flex-col h-fit rounded-xl overflow-hidden bg-casino-800/20 border border-casino-700/50 backdrop-blur-sm transition-all duration-300 w-full">
@@ -39,7 +35,12 @@ export const HistoryLog: React.FC<HistoryLogProps> = ({ history, system, onUndo 
                     </div>
                 ) : (
                     <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-1 pr-1 custom-scrollbar max-h-[400px] lg:max-h-none">
-                    {history.map((event, index) => {
+                    {[...history].reverse().map((event, index) => {
+                        // index in mapped array is reversed. 
+                        // Real index for undo logic:
+                        // "Undo" usually removes the very last event added (newest).
+                        // In a reversed list, the newest is the first item (index 0).
+                        
                         const val = system.weights[event.rank];
                         const isSystemNeutral = val === 0;
                         const isSystemPositive = val > 0;
@@ -53,21 +54,30 @@ export const HistoryLog: React.FC<HistoryLogProps> = ({ history, system, onUndo 
                                 ? 'text-blue-400' 
                                 : 'text-emerald-400';
 
+                        // Show Undo button only on the most recent event (which is now at the top, index 0)
+                        const isNewest = index === 0;
+
                         return (
                         <div key={event.id} className="group flex items-center justify-between p-2 rounded-md bg-casino-800/30 border border-transparent hover:border-casino-700 hover:bg-casino-800/80 transition-all text-sm">
                             <div className="flex items-center gap-3">
                                 <span className="text-xs text-slate-500 font-mono">
                                     {new Date(event.timestamp).toLocaleTimeString([], {minute:'2-digit', second:'2-digit'})}
                                 </span>
-                                <span className={`font-bold font-mono w-6 text-center ${rankColor}`}>
-                                    {event.rank}
-                                </span>
+                                {event.inputLabel ? (
+                                    <span className={`font-bold font-mono min-w-[3rem] text-center text-xs ${rankColor}`}>
+                                        {event.inputLabel}
+                                    </span>
+                                ) : (
+                                    <span className={`font-bold font-mono min-w-[3rem] text-center ${rankColor}`}>
+                                        {event.rank}
+                                    </span>
+                                )}
                                 <span className={`text-xs font-mono ${isSystemNeutral ? 'text-slate-500' : isSystemPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
                                     {val > 0 ? '+' : ''}{val}
                                 </span>
                             </div>
                             
-                            {index === history.length - 1 && (
+                            {isNewest && (
                                 <button 
                                     onClick={(e) => { e.stopPropagation(); onUndo(event.id); }}
                                     className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 p-1 text-slate-500 hover:text-rose-400 transition-all"

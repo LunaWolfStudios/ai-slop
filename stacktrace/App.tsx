@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid'; // User would typically need this pkg, but standard in this env
-import { Settings, AlertTriangle, ShieldCheck, RotateCcw } from 'lucide-react';
+import { Settings, AlertTriangle, ShieldCheck, RotateCcw, Keyboard, MousePointerClick } from 'lucide-react';
 import { AppSettings, CardEvent, CardRank } from './types';
 import { SYSTEMS, DEFAULT_SYSTEM, INITIAL_DECK_COUNT } from './constants';
 import { computeGameState } from './services/analytics';
@@ -17,7 +17,8 @@ const App: React.FC = () => {
   const [history, setHistory] = useState<CardEvent[]>([]);
   const [settings, setSettings] = useState<AppSettings>({
     decks: INITIAL_DECK_COUNT,
-    systemId: DEFAULT_SYSTEM
+    systemId: DEFAULT_SYSTEM,
+    inputMode: 'detailed'
   });
   const [showSettings, setShowSettings] = useState(false);
 
@@ -26,11 +27,12 @@ const App: React.FC = () => {
   const currentSystem = SYSTEMS[settings.systemId];
 
   // Actions
-  const handleCardInput = useCallback((rank: CardRank) => {
+  const handleCardInput = useCallback((rank: CardRank, inputLabel?: string) => {
     const newEvent: CardEvent = {
       id: generateId(),
       rank,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      inputLabel
     };
     setHistory(prev => [...prev, newEvent]);
   }, []);
@@ -52,6 +54,10 @@ const App: React.FC = () => {
   
   const changeDecks = (count: number) => {
       setSettings(prev => ({ ...prev, decks: count }));
+  };
+
+  const toggleInputMode = (mode: 'detailed' | 'simple') => {
+    setSettings(prev => ({ ...prev, inputMode: mode }));
   };
 
   // Prevent accidental back navigation on mobile
@@ -100,10 +106,10 @@ const App: React.FC = () => {
         {/* Settings Dropdown */}
         {showSettings && (
             <div className="border-t border-white/10 bg-[#0f172a] animate-in slide-in-from-top-2 duration-200">
-                <div className="max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     <div>
                         <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Counting System</h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <div className="grid grid-cols-1 gap-2">
                             {Object.values(SYSTEMS).map(s => (
                                 <button
                                     key={s.id}
@@ -116,6 +122,35 @@ const App: React.FC = () => {
                                     <div className="text-[10px] opacity-70 mt-1">{s.description}</div>
                                 </button>
                             ))}
+                        </div>
+                    </div>
+                    <div>
+                        <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Input Mode</h3>
+                        <div className="flex flex-col gap-2">
+                            <button
+                                onClick={() => toggleInputMode('detailed')}
+                                className={`px-4 py-3 rounded-lg border text-left flex items-center gap-3 transition-all ${settings.inputMode === 'detailed'
+                                    ? 'bg-purple-900/20 border-purple-500/50 text-purple-300'
+                                    : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:border-slate-600'}`}
+                            >
+                                <Keyboard size={20} />
+                                <div>
+                                    <div className="font-bold text-sm">Detailed Input</div>
+                                    <div className="text-[10px] opacity-70">Specific cards (2, 3... K, A)</div>
+                                </div>
+                            </button>
+                            <button
+                                onClick={() => toggleInputMode('simple')}
+                                className={`px-4 py-3 rounded-lg border text-left flex items-center gap-3 transition-all ${settings.inputMode === 'simple'
+                                    ? 'bg-purple-900/20 border-purple-500/50 text-purple-300'
+                                    : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:border-slate-600'}`}
+                            >
+                                <MousePointerClick size={20} />
+                                <div>
+                                    <div className="font-bold text-sm">Simple Input</div>
+                                    <div className="text-[10px] opacity-70">Generic Low / Neutral / High buttons</div>
+                                </div>
+                            </button>
                         </div>
                     </div>
                     <div>
@@ -168,9 +203,11 @@ const App: React.FC = () => {
                             {currentSystem.name} Active
                         </span>
                     </div>
-                    <CardInputGrid onCardInput={handleCardInput} />
+                    <CardInputGrid onCardInput={handleCardInput} mode={settings.inputMode} />
                     
-                    <CardInventory composition={computed.composition} cardsRemaining={cardsRemaining} />
+                    {settings.inputMode === 'detailed' && (
+                        <CardInventory composition={computed.composition} cardsRemaining={cardsRemaining} />
+                    )}
                 </div>
             </div>
 
