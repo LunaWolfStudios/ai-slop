@@ -26,6 +26,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ stats, system }) => {
       ? 'text-neon-red' 
       : 'text-slate-200';
 
+  // Determine graph color based on True Count status
+  let graphColor = '#06b6d4'; // Default Cyan
+  if (isPositive) graphColor = '#10b981'; // Neon Green
+  if (isNegative) graphColor = '#f43f5e'; // Neon Red
+
   return (
     <div className="space-y-6">
       {/* Primary Stats */}
@@ -106,15 +111,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ stats, system }) => {
                     <AreaChart data={stats.historyPoints}>
                     <defs>
                         <linearGradient id="colorTc" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#06b6d4" stopOpacity={0}/>
+                        <stop offset="5%" stopColor={graphColor} stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor={graphColor} stopOpacity={0}/>
                         </linearGradient>
                     </defs>
                     <XAxis dataKey="time" hide />
                     <YAxis domain={['auto', 'auto']} tick={{fill: '#64748b', fontSize: 10}} tickFormatter={(val) => val.toFixed(1)} />
                     <Tooltip 
                         contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#f1f5f9' }}
-                        itemStyle={{ color: '#06b6d4' }}
+                        itemStyle={{ color: graphColor }}
                         labelStyle={{ display: 'none' }}
                         formatter={(val: number) => [val, 'True Count']}
                     />
@@ -123,7 +128,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ stats, system }) => {
                     <Area 
                         type="monotone" 
                         dataKey="tc" 
-                        stroke="#06b6d4" 
+                        stroke={graphColor} 
                         strokeWidth={2}
                         fillOpacity={1} 
                         fill="url(#colorTc)" 
