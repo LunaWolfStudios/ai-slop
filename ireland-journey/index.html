@@ -65,13 +65,14 @@
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      // Use relative path 'sw.js' instead of absolute '/sw.js' to support subdirectories/GitHub Pages
-      navigator.serviceWorker.register('sw.js')
+      // Use explicit relative path './sw.js' to ensure correct resolution in subdirectories (like GitHub Pages)
+      navigator.serviceWorker.register('./sw.js')
         .then(registration => {
           console.log('SW registered with scope:', registration.scope);
         })
         .catch(registrationError => {
-          console.log('SW registration failed: ', registrationError);
+          // Log nicely but don't break the app flow
+          console.warn('SW registration failed (this is normal in development or if sw.js is missing from build output):', registrationError);
         });
     });
   }
