@@ -1,8 +1,9 @@
 const CACHE_NAME = 'ireland-map-v1';
 
+// Use relative paths for core assets to work in subdirectories
 const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
+  './',
+  './index.html',
   'https://cdn.tailwindcss.com',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
   'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
@@ -35,38 +36,51 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch event - Stale-while-revalidate for tiles and images
+// Fetch event
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Strategy for Map Tiles (CartoCDN) and Images (Weserv/Wikimedia)
+  // Strategy 1: Stale-while-revalidate for Map Tiles and External Images
+  // We want these to be fast (from cache) but update eventually
   if (url.hostname.includes('cartocdn') || url.hostname.includes('weserv.nl') || url.hostname.includes('openstreetmap')) {
     event.respondWith(
       caches.open(CACHE_NAME).then((cache) => {
         return cache.match(event.request).then((cachedResponse) => {
           const fetchPromise = fetch(event.request)
             .then((networkResponse) => {
-              // Cache valid responses
               if (networkResponse.ok) {
                 cache.put(event.request, networkResponse.clone());
               }
               return networkResponse;
             })
             .catch(() => {
-              // If offline and fetch fails, we just return undefined here
-              // The cachedResponse will be returned below if it exists
+              // Swallow errors if offline
             });
 
           return cachedResponse || fetchPromise;
         });
       })
     );
-  } else {
-    // Default network first for other requests
-    event.respondWith(
-      caches.match(event.request).then((response) => {
-        return response || fetch(event.request);
-      })
-    );
+    return;
   }
+
+  // Strategy 2: Network First, then Cache (Fallthrough) for local assets
+  // This ensures we always try to get the latest app code, but save it for offline/later
+  event.respondWith(
+    fetch(event.request)
+      .then((networkResponse) => {
+        // If successful response and it's a same-origin request (or local script), cache it
+        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+        }
+        return networkResponse;
+      })
+      .catch(() => {
+        // If network fails (offline), try cache
+        return caches.match(event.request);
+      })
+  );
 });

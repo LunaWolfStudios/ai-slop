@@ -65,9 +65,10 @@
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js')
+      // Use relative path 'sw.js' instead of absolute '/sw.js' to support subdirectories/GitHub Pages
+      navigator.serviceWorker.register('sw.js')
         .then(registration => {
-          console.log('SW registered');
+          console.log('SW registered with scope:', registration.scope);
         })
         .catch(registrationError => {
           console.log('SW registration failed: ', registrationError);
@@ -79,6 +80,7 @@
 </head>
   <body>
     <div id="root"></div>
+    <script type="module" src="index.tsx"></script>
   <script type="module" src="/index.tsx"></script>
 </body>
 </html>
