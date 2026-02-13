@@ -46,6 +46,19 @@
       }
     </style>
 
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then(registration => {
+          console.log('SW registered: ', registration);
+        })
+        .catch(registrationError => {
+          console.log('SW registration failed: ', registrationError);
+        });
+    });
+  }
+</script>
 <link rel="stylesheet" href="./index.css">
   <script type="importmap">
 {
@@ -59,7 +72,7 @@
   }
 }
 </script>
-  <script type="module" crossorigin src="./assets/index-koGO0_c8.js"></script>
+  <script type="module" crossorigin src="./assets/index-BLVQcMwu.js"></script>
 </head>
   <body>
     <div id="root"></div>

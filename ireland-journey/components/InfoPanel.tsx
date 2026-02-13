@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Landmark } from '../types';
-import { X, CheckCircle, Circle, MapPin, Navigation, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, CheckCircle, Circle, MapPin, Navigation, ChevronLeft, ChevronRight, ImageOff } from 'lucide-react';
 
 interface InfoPanelProps {
   landmark: Landmark | null;
@@ -19,6 +19,13 @@ const InfoPanel: React.FC<InfoPanelProps> = ({
   onNext,
   onPrev
 }) => {
+  const [imgState, setImgState] = useState<'loading' | 'loaded' | 'error'>('loading');
+
+  // Reset image state when landmark changes
+  useEffect(() => {
+    setImgState('loading');
+  }, [landmark?.id]);
+
   if (!landmark) return null;
 
   return (
@@ -27,12 +34,31 @@ const InfoPanel: React.FC<InfoPanelProps> = ({
       <div className="bg-white rounded-t-2xl md:rounded-xl shadow-2xl pointer-events-auto overflow-hidden animate-in slide-in-from-bottom-10 md:slide-in-from-right-10 duration-300 flex flex-col max-h-[80vh] group">
         
         {/* Header Image & Navigation */}
-        <div className="relative h-48 w-full bg-gray-200">
+        <div className="relative h-48 w-full bg-gray-200 overflow-hidden">
+          
+          {/* Loading Skeleton */}
+          {imgState === 'loading' && (
+            <div className="absolute inset-0 bg-gray-200 animate-pulse flex items-center justify-center">
+              <span className="text-gray-400 text-sm font-medium">Loading view...</span>
+            </div>
+          )}
+
+          {/* Error State */}
+          {imgState === 'error' && (
+            <div className="absolute inset-0 bg-gray-100 flex flex-col items-center justify-center text-gray-400">
+              <ImageOff size={32} className="mb-2 opacity-50" />
+              <span className="text-xs">Image unavailable</span>
+            </div>
+          )}
+
           <img 
             src={landmark.imageUrl} 
             alt={landmark.name}
-            className="w-full h-full object-cover"
+            className={`w-full h-full object-cover transition-opacity duration-500 ${imgState === 'loaded' ? 'opacity-100' : 'opacity-0'}`}
+            onLoad={() => setImgState('loaded')}
+            onError={() => setImgState('error')}
           />
+          
           <button 
             onClick={onClose}
             className="absolute top-3 right-3 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full backdrop-blur-sm transition-colors z-20"
@@ -46,7 +72,7 @@ const InfoPanel: React.FC<InfoPanelProps> = ({
           </div>
 
           {/* Nav Buttons (Overlay on Image) */}
-          <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-between px-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+          <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-between px-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity z-20">
             <button 
               onClick={(e) => { e.stopPropagation(); onPrev(); }}
               className="bg-black/30 hover:bg-black/60 text-white p-2 rounded-full backdrop-blur-sm transition-all hover:scale-110 active:scale-95"
