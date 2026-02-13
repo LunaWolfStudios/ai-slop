@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { MapContainer, TileLayer, useMap } from 'react-leaflet';
 import { LANDMARKS, IRELAND_CENTER, DEFAULT_ZOOM, LOCAL_STORAGE_KEY } from './constants';
 import { Landmark, TravelStats } from './types';
@@ -10,11 +10,25 @@ import { Map as MapIcon } from 'lucide-react';
 // Helper to update map view when selection changes
 const MapUpdater: React.FC<{ center: [number, number]; zoom: number }> = ({ center, zoom }) => {
   const map = useMap();
+  const previousCenter = useRef<[number, number]>(center);
+  const previousZoom = useRef<number>(zoom);
+
   useEffect(() => {
-    map.flyTo(center, zoom, {
-      duration: 1.5,
-      easeLinearity: 0.25
-    });
+    // Only fly if center or zoom has actually changed significantly
+    const [lat, lng] = center;
+    const [prevLat, prevLng] = previousCenter.current;
+    
+    const moved = Math.abs(lat - prevLat) > 0.0001 || Math.abs(lng - prevLng) > 0.0001;
+    const zoomed = zoom !== previousZoom.current;
+
+    if (moved || zoomed) {
+      map.flyTo(center, zoom, {
+        duration: 1.5,
+        easeLinearity: 0.25
+      });
+      previousCenter.current = center;
+      previousZoom.current = zoom;
+    }
   }, [center, zoom, map]);
   return null;
 };
@@ -103,11 +117,12 @@ const App: React.FC = () => {
   }, [visitedIds]);
 
   // View Calculation
-  // If a landmark is selected, center on it. Otherwise center on Ireland.
-  // On mobile, we might offset the center slightly up to account for the bottom sheet
-  const mapCenter: [number, number] = selectedLandmark 
-    ? [selectedLandmark.lat, selectedLandmark.lng] 
-    : IRELAND_CENTER;
+  // We use useMemo to ensure the array reference is stable unless selection changes
+  const mapCenter: [number, number] = useMemo(() => {
+    return selectedLandmark 
+      ? [selectedLandmark.lat, selectedLandmark.lng] 
+      : IRELAND_CENTER;
+  }, [selectedLandmark]);
     
   const mapZoom = selectedLandmark ? 11 : DEFAULT_ZOOM;
 
@@ -120,8 +135,9 @@ const App: React.FC = () => {
         center={IRELAND_CENTER} 
         zoom={DEFAULT_ZOOM} 
         scrollWheelZoom={true} 
-        className="w-full h-full z-0"
+        className="w-full h-full z-0 outline-none"
         zoomControl={false} // We will add custom controls or rely on touch
+        tap={false} // Explicitly disable tap in recent Leaflet versions if using react-leaflet to let browser handle touch
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'

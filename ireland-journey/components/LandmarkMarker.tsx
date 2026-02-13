@@ -46,7 +46,12 @@ const LandmarkMarker: React.FC<LandmarkMarkerProps> = ({ landmark, visited, sele
       position={[landmark.lat, landmark.lng]} 
       icon={createIcon()}
       eventHandlers={{
-        click: () => onSelect(landmark),
+        click: (e) => {
+          // Prevent the map from receiving the click, which might cause it to re-center or do nothing
+          // This is critical for mobile 'tap' vs 'map click' differentiation
+          L.DomEvent.stopPropagation(e.originalEvent);
+          onSelect(landmark);
+        },
       }}
     >
       <Tooltip 

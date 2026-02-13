@@ -13,11 +13,14 @@
         margin: 0;
         padding: 0;
         overflow: hidden;
+        background-color: #f1f5f9; /* Slate-100 to match app bg */
       }
       .leaflet-container {
         width: 100%;
         height: 100%;
         z-index: 0;
+        /* Fix for mobile touch behavior */
+        touch-action: none;
       }
       /* Custom marker styles for DivIcons */
       .custom-marker {
@@ -44,6 +47,14 @@
       .leaflet-tooltip-bottom:before {
         display: none;
       }
+      /* Hide scrollbar in info panel on some browsers */
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
     </style>
   <script type="importmap">
 {
@@ -62,7 +73,7 @@
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/sw.js')
         .then(registration => {
-          console.log('SW registered: ', registration);
+          console.log('SW registered');
         })
         .catch(registrationError => {
           console.log('SW registration failed: ', registrationError);
