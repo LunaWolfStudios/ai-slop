@@ -19,15 +19,8 @@
         width: 100%;
         height: 100%;
         z-index: 0;
-        /* Fix for mobile touch behavior */
+        /* Fix for mobile touch behavior - prevents browser zooming/panning interference */
         touch-action: none;
-      }
-      /* Custom marker styles for DivIcons */
-      .custom-marker {
-        transition: transform 0.2s ease-out;
-      }
-      .custom-marker:hover {
-        transform: scale(1.1);
       }
       /* Custom Tooltip Styling */
       .leaflet-tooltip.custom-map-tooltip {
@@ -42,6 +35,7 @@
         padding: 4px 8px;
         white-space: nowrap;
         text-transform: capitalize;
+        margin-top: 4px;
       }
       /* Hide the tooltip arrow/pointer for a floating text look */
       .leaflet-tooltip-bottom:before {
